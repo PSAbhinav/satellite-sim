@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, TriangleAlert } from 'lucide-react';
+import { ArrowRight, Check, Lightbulb, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/accordion';
 import { InfoChip } from '@/components/InfoChip';
 import { VehicleViewer } from '@/scene/VehicleViewer';
-import { STAGE_PRESETS } from '@/sim/model/catalog';
+import { KIND_LABELS, STAGE_PRESETS } from '@/sim/model/catalog';
 import type { StageSpec } from '@/sim/model/rocket';
 import {
   grossMass,
@@ -32,52 +32,60 @@ import { kgToT, msToKms } from '@/sim/units';
 import { useMissionStore } from '@/state/useMissionStore';
 import { cn } from '@/lib/utils';
 
-/** Group parts by program family for the accordion. */
-function familyOf(s: StageSpec): string {
-  const h = s.heritage ?? '';
-  if (h.includes('SpaceX')) return 'SpaceX';
-  if (h.includes('Apollo') || h.includes('NASA') || h.includes('Shuttle')) return 'NASA';
-  if (h.includes('ULA') || h.includes('Atlas') || h.includes('Delta')) return 'ULA';
-  if (h.includes('ISRO') || h.includes('LVM3')) return 'ISRO';
-  if (h.includes('Ariane')) return 'Europe';
-  if (h.includes('Electron')) return 'Rocket Lab';
-  return 'International';
-}
-
-const FAMILY_ORDER = ['SpaceX', 'NASA', 'ULA', 'ISRO', 'Europe', 'Rocket Lab', 'International'];
+// Component-type groups per slot: boosters/solids lift, the rest ride on top.
+const KINDS_FOR_SLOT: Record<number, StageSpec['kind'][]> = {
+  0: ['booster', 'solid'],
+  1: ['upper', 'spaceship', 'kick', 'booster', 'solid'],
+};
 
 function PartRow({
   part,
   fitted,
+  disabled,
   onFit,
 }: {
   part: StageSpec;
   fitted: boolean;
+  /** Can't lift off with the rest of the current stack. */
+  disabled: boolean;
   onFit: () => void;
 }) {
   return (
     <div
       role="button"
-      tabIndex={0}
-      onClick={onFit}
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
+      onClick={() => !disabled && onFit()}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onFit();
+        if (!disabled && (e.key === 'Enter' || e.key === ' ')) onFit();
       }}
       className={cn(
-        'flex w-full cursor-pointer items-center gap-2 rounded-sm border px-2 py-1.5 text-left transition-colors',
+        'flex w-full items-center gap-2 rounded-sm border px-2 py-1.5 text-left transition-colors',
         fitted
-          ? 'border-phosphor/60 bg-console-2'
-          : 'border-transparent hover:border-line hover:bg-console-2/50',
+          ? 'cursor-pointer border-phosphor/60 bg-console-2'
+          : disabled
+            ? 'cursor-not-allowed border-transparent opacity-35'
+            : 'cursor-pointer border-transparent hover:border-line hover:bg-console-2/50',
       )}
-      title={`${part.engine.name} ×${part.engineCount} · ${part.heritage ?? ''}`}
+      title={
+        disabled
+          ? 'Not enough thrust to lift the stack — this combination cannot take off.'
+          : `${part.engine.name} ×${part.engineCount} · ${part.heritage ?? ''}`
+      }
     >
       <span className={cn('size-3.5 shrink-0', fitted ? 'text-phosphor' : 'text-transparent')}>
         <Check className="size-3.5" />
       </span>
       <span className="min-w-0 flex-1 truncate text-xs text-starlight">{part.name}</span>
-      <span className="telemetry shrink-0 text-[10px] text-muted-star">
-        {kgToT(part.propMass).toFixed(0)}t · {part.engine.ispVac}s · {part.engineCount}×
-      </span>
+      {disabled ? (
+        <span className="shrink-0 font-display text-[9px] uppercase tracking-wider text-crimson/80">
+          no liftoff
+        </span>
+      ) : (
+        <span className="telemetry shrink-0 text-[10px] text-muted-star">
+          {kgToT(part.propMass).toFixed(0)}t · {part.engine.ispVac}s · {part.engineCount}×
+        </span>
+      )}
     </div>
   );
 }
@@ -100,19 +108,44 @@ export default function Assembly() {
   const mass = grossMass(design);
   const twrOk = twr > 1.0;
 
+  // Would the whole stack still lift off with this part in this slot?
+  const canLiftWith = (p: StageSpec): boolean => {
+    const stages = [...design.stages];
+    stages[slot] = p;
+    return liftoffTWR({ ...design, stages }) > 1.0;
+  };
+
   const partsForSlot = useMemo(() => {
-    const all = Object.values(STAGE_PRESETS).filter((p) =>
-      slot === 0 ? p.engine.thrustSL > 0 : p.engine.thrustVac > 0,
-    );
+    const kinds = KINDS_FOR_SLOT[slot];
     const groups = new Map<string, StageSpec[]>();
-    for (const p of all) {
-      const f = familyOf(p);
-      groups.set(f, [...(groups.get(f) ?? []), p]);
+    for (const kind of kinds) {
+      const parts = Object.values(STAGE_PRESETS).filter(
+        (p) => p.kind === kind && (slot === 0 ? p.engine.thrustSL > 0 : p.engine.thrustVac > 0),
+      );
+      if (parts.length) groups.set(KIND_LABELS[kind], parts);
     }
-    return FAMILY_ORDER.filter((f) => groups.has(f)).map((f) => [f, groups.get(f)!] as const);
+    return [...groups.entries()];
   }, [slot]);
 
   const fitted = design.stages[slot];
+
+  // Suggestion: among the parts that can lift off, the one with the best Δv margin.
+  const suggestion = useMemo(() => {
+    let best: { part: StageSpec; margin: number } | null = null;
+    for (const [, parts] of partsForSlot) {
+      for (const p of parts) {
+        if (p.id === fitted.id || !canLiftWith(p)) continue;
+        const stages = [...design.stages];
+        stages[slot] = p;
+        const trial = { ...design, stages };
+        const m =
+          totalDeltaV(trial) - requiredDeltaV(design.payload.target.altitude, siteRotationBonus(site));
+        if (!best || m > best.margin) best = { part: p, margin: m };
+      }
+    }
+    return best && best.margin > margin ? best : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partsForSlot, design, slot, fitted.id]);
 
   return (
     <div className="grid h-[calc(100vh-3rem)] gap-2 overflow-hidden p-2 lg:grid-cols-[minmax(300px,360px)_1fr_minmax(280px,330px)]">
@@ -132,11 +165,29 @@ export default function Assembly() {
           </Tabs>
         </CardHeader>
         <CardContent className="min-h-0 flex-1 overflow-y-auto pt-0">
-          <Accordion type="multiple" defaultValue={[familyOf(fitted)]}>
-            {partsForSlot.map(([family, parts]) => (
-              <AccordionItem key={family} value={family}>
+          {/* Suggestion box */}
+          {suggestion && (
+            <div className="mb-2 flex items-center gap-2 rounded-panel border border-ion/40 bg-ion/10 p-2">
+              <Lightbulb className="size-4 shrink-0 text-ion" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-xs font-semibold text-starlight">
+                  Suggested: {suggestion.part.name}
+                </div>
+                <div className="telemetry text-[10px] text-muted-star">
+                  Δv margin would be {suggestion.margin >= 0 ? '+' : ''}
+                  {msToKms(suggestion.margin).toFixed(2)} km/s
+                </div>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => setStage(slot, suggestion.part.id)}>
+                Fit it
+              </Button>
+            </div>
+          )}
+          <Accordion type="multiple" defaultValue={[KIND_LABELS[fitted.kind]]}>
+            {partsForSlot.map(([label, parts]) => (
+              <AccordionItem key={label} value={label}>
                 <AccordionTrigger>
-                  {family}
+                  {label}
                   <span className="telemetry mr-2 ml-auto pl-2 text-[10px] opacity-60">
                     {parts.length}
                   </span>
@@ -147,6 +198,7 @@ export default function Assembly() {
                       key={p.id}
                       part={p}
                       fitted={fitted.id === p.id}
+                      disabled={fitted.id !== p.id && !canLiftWith(p)}
                       onFit={() => setStage(slot, p.id)}
                     />
                   ))}

@@ -16,9 +16,12 @@ export interface StageVisual {
   interstage?: boolean;
 }
 
+export type StageKind = 'booster' | 'solid' | 'upper' | 'spaceship' | 'kick';
+
 export interface StageSpec {
   id: string;
   name: string;
+  kind: StageKind;
   engine: EngineSpec;
   engineCount: number;
   /** Structure-only mass, kg. */

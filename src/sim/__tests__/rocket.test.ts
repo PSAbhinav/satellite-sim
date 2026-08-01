@@ -21,6 +21,7 @@ describe('Tsiolkovsky', () => {
         {
           id: 't',
           name: 't',
+          kind: 'booster' as const,
           engine: { ...ENGINES['merlin-1d'], ispVac: isp },
           engineCount: 1,
           dryMass: dry,
