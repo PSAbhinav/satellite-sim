@@ -4,6 +4,7 @@ export type SimEventType =
   | 'PITCH_KICK'
   | 'SUPERSONIC'
   | 'MAX_Q'
+  | 'BOOSTER_SEP'
   | 'MECO'
   | 'STAGE_SEP'
   | 'STAGE_IGNITION'
@@ -37,6 +38,7 @@ export const CALLOUTS: Record<SimEventType, { severity: EventSeverity; message: 
   PITCH_KICK: { severity: 'nominal', message: 'Beginning pitch-over maneuver.' },
   SUPERSONIC: { severity: 'callout', message: 'Vehicle is supersonic.' },
   MAX_Q: { severity: 'callout', message: 'Max-Q — maximum aerodynamic pressure.' },
+  BOOSTER_SEP: { severity: 'callout', message: 'Booster separation confirmed.' },
   MECO: { severity: 'callout', message: 'MECO — main engine cutoff.' },
   STAGE_SEP: { severity: 'callout', message: 'Stage separation confirmed.' },
   STAGE_IGNITION: { severity: 'callout', message: 'Second stage ignition.' },

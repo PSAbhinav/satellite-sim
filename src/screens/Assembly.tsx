@@ -94,6 +94,7 @@ export default function Assembly() {
   const design = useMissionStore((s) => s.design);
   const siteId = useMissionStore((s) => s.siteId);
   const setStage = useMissionStore((s) => s.setStage);
+  const setBoosters = useMissionStore((s) => s.setBoosters);
   const unlockPedia = useMissionStore((s) => s.unlockPedia);
   const [slot, setSlot] = useState(0);
 
@@ -129,23 +130,32 @@ export default function Assembly() {
 
   const fitted = design.stages[slot];
 
-  // Suggestion: among the parts that can lift off, the one with the best Δv margin.
+  // Suggestion: ONLY when the current design has a real problem (can't reach
+  // orbit or can't lift off) — and only combinations that are guaranteed to
+  // fly: TWR ≥ 1.2, positive Δv margin, and aerodynamically sane proportions
+  // (the upper body can't be much wider than the booster carrying it).
   const suggestion = useMemo(() => {
+    if (margin >= 0 && twr > 1.0) return null;
     let best: { part: StageSpec; margin: number } | null = null;
     for (const [, parts] of partsForSlot) {
       for (const p of parts) {
-        if (p.id === fitted.id || !canLiftWith(p)) continue;
+        if (p.id === fitted.id) continue;
         const stages = [...design.stages];
         stages[slot] = p;
         const trial = { ...design, stages };
+        const dLower = stages[0].visual?.diameterM ?? 4;
+        const dUpper = stages[1].visual?.diameterM ?? 4;
+        const aeroOk = dUpper <= dLower * 1.35;
+        const trialTwr = liftoffTWR(trial);
         const m =
           totalDeltaV(trial) - requiredDeltaV(design.payload.target.altitude, siteRotationBonus(site));
+        if (trialTwr < 1.2 || m <= 0 || !aeroOk) continue;
         if (!best || m > best.margin) best = { part: p, margin: m };
       }
     }
-    return best && best.margin > margin ? best : null;
+    return best;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [partsForSlot, design, slot, fitted.id]);
+  }, [partsForSlot, design, slot, fitted.id, margin, twr]);
 
   return (
     <div className="grid h-[calc(100vh-3rem)] gap-2 overflow-hidden p-2 lg:grid-cols-[minmax(300px,360px)_1fr_minmax(280px,330px)]">
@@ -171,7 +181,7 @@ export default function Assembly() {
               <Lightbulb className="size-4 shrink-0 text-ion" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-xs font-semibold text-starlight">
-                  Suggested: {suggestion.part.name}
+                  This design can't reach orbit — try {suggestion.part.name}
                 </div>
                 <div className="telemetry text-[10px] text-muted-star">
                   Δv margin would be {suggestion.margin >= 0 ? '+' : ''}
@@ -237,7 +247,52 @@ export default function Assembly() {
       </Card>
 
       {/* ── Budget ── */}
-      <div className="flex min-h-0 flex-col gap-2">
+      <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
+        <Card className="shrink-0">
+          <CardHeader>
+            <CardTitle>Side boosters</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <select
+              className="w-full cursor-pointer rounded-panel border border-line bg-console-2 px-2 py-1.5 text-xs text-starlight"
+              value={design.boosters?.spec.id ?? ''}
+              onChange={(e) =>
+                setBoosters(e.target.value || null, design.boosters?.count ?? 2)
+              }
+            >
+              <option value="">None</option>
+              {Object.values(STAGE_PRESETS)
+                .filter((p) => (p.kind === 'booster' || p.kind === 'solid') && p.engine.thrustSL > 0)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+            {design.boosters && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-star">Count</span>
+                {[2, 4].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setBoosters(design.boosters!.spec.id, n)}
+                    className={cn(
+                      'telemetry cursor-pointer rounded-sm border px-2 py-0.5 text-xs',
+                      design.boosters!.count === n
+                        ? 'border-phosphor/60 bg-console-2 text-phosphor'
+                        : 'border-line text-muted-star hover:text-starlight',
+                    )}
+                  >
+                    {n}×
+                  </button>
+                ))}
+                <span className="ml-auto text-[10px] text-muted-star">
+                  burn in parallel, drop when dry
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
         <Card className="flex-1">
           <CardHeader>
             <CardTitle>Flight budget</CardTitle>

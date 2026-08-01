@@ -38,6 +38,7 @@ interface MissionState {
   result: MissionResult | null;
 
   setStage: (slot: number, presetId: string) => void;
+  setBoosters: (presetId: string | null, count: number) => void;
   setPayload: (id: string) => void;
   setSite: (id: string) => void;
   nextWeatherDay: () => void;
@@ -72,6 +73,13 @@ export const useMissionStore = create<MissionState>()(
           stages[slot] = STAGE_PRESETS[presetId];
           return { design: { ...s.design, stages } };
         }),
+      setBoosters: (presetId, count) =>
+        set((s) => ({
+          design: {
+            ...s.design,
+            boosters: presetId ? { spec: STAGE_PRESETS[presetId], count } : undefined,
+          },
+        })),
       setPayload: (id) =>
         set((s) => ({
           payloadId: id,

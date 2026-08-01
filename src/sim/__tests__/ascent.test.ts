@@ -5,7 +5,8 @@ import { rotationBonus } from '../env/earth';
 import { generateWeather } from '../env/weather';
 import { evaluateLaunchCommit } from '../env/launchCommit';
 import { SITES } from '../env/sites';
-import { defaultDesign, PAYLOADS } from '../model/catalog';
+import { defaultDesign, PAYLOADS, STAGE_PRESETS } from '../model/catalog';
+import { liftoffTWR, totalDeltaV } from '../model/rocket';
 import { Simulation } from '../runtime/simulation';
 
 const runToEnd = (sim: Simulation, maxT = 1200): void => {
@@ -141,6 +142,34 @@ describe('failure modes', () => {
     runToEnd(sim);
     expect(sim.phase).toBe('failed');
     expect(sim.result?.outcome).toBe('breakup');
+  });
+});
+
+describe('parallel staging (side boosters)', () => {
+  it('Angara-A5-style: core alone cannot lift, core + 4 URMs flies to coast', () => {
+    const d = defaultDesign();
+    const core = {
+      ...d,
+      stages: [STAGE_PRESETS['angara-urm1'], STAGE_PRESETS['falcon9-s2']],
+      payload: { ...d.payload, mass: 150 },
+    };
+    expect(liftoffTWR(core)).toBeLessThan(1); // the core needs its strap-ons
+
+    const withBoosters = {
+      ...core,
+      boosters: { spec: STAGE_PRESETS['angara-urm1'], count: 2 },
+    };
+    expect(liftoffTWR(withBoosters)).toBeGreaterThan(1.1);
+    expect(totalDeltaV(withBoosters)).toBeGreaterThan(totalDeltaV(core));
+
+    const sim = new Simulation();
+    sim.configure({ design: withBoosters, site: SITES.kourou, targetAltitude: 400e3 });
+    runToEnd(sim);
+    const types = sim.allEvents().map((e) => e.type);
+    expect(types).toContain('BOOSTER_SEP');
+    // Booster sep must happen before core MECO (they burn out first).
+    expect(types.indexOf('BOOSTER_SEP')).toBeLessThan(types.indexOf('MECO'));
+    expect(sim.phase).toBe('coast');
   });
 });
 

@@ -29,6 +29,8 @@ export interface SimSnapshot {
   throttle: number;
   activeStage: number;
   stages: StageTelemetry[];
+  /** Strap-on fuel fraction; undefined = no boosters / already jettisoned. */
+  boosterFuelFrac?: number;
   fairingOn: boolean;
   // 3D position (ECI, m) for the scene + ground track.
   rEci: Vec3;

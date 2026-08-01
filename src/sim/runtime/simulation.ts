@@ -7,11 +7,17 @@ import type { Vec2 } from '../math/vec2';
 import type { Vec3 } from '../math/vec3';
 import { mag3 } from '../math/vec3';
 import type { RocketDesign } from '../model/rocket';
+import { liftoffTWR } from '../model/rocket';
 import type { LaunchSite } from '../env/sites';
 import { subSatellitePoint } from '../env/earth';
 import { atmosphereVelocity } from '../dynamics/drag';
 import type { AscentContext, AscentState } from '../dynamics/ascent';
-import { computeDerived, rk4Step, timeToDepletion } from '../dynamics/ascent';
+import {
+  computeDerived,
+  rk4Step,
+  timeToBoosterDepletion,
+  timeToDepletion,
+} from '../dynamics/ascent';
 import { DEFAULT_PITCH_PROGRAM } from '../dynamics/steering';
 import type { OrbitalElements } from '../orbit/elements';
 import {
@@ -138,11 +144,26 @@ export class Simulation {
       v: v0,
       stageIndex: 0,
       propRemaining: cfg.design.stages[0].propMass,
+      boosterProp: cfg.design.boosters
+        ? cfg.design.boosters.spec.propMass * cfg.design.boosters.count
+        : 0,
+      boostersOn: !!cfg.design.boosters && cfg.design.boosters.count > 0,
       fairingOn: true,
       throttle: 1,
       engineOn: false,
     };
-    this.ctx = { design: cfg.design, prog: DEFAULT_PITCH_PROGRAM, drag };
+    // Adapt the gravity-turn profile to the vehicle: hot rockets (high TWR)
+    // must stay vertical longer to exit dense air before speed builds; weak
+    // ones need it to gain vertical speed before bending. The default is
+    // tuned for Falcon-9-class TWR ≈ 1.45.
+    const twr = liftoffTWR(cfg.design);
+    const dev = Math.min(Math.abs(twr - 1.45), 1.2);
+    const prog = {
+      kickAltitude: DEFAULT_PITCH_PROGRAM.kickAltitude * (1 + dev * 2),
+      kickDeg: Math.max(5, DEFAULT_PITCH_PROGRAM.kickDeg - dev * 12),
+      followAltitude: DEFAULT_PITCH_PROGRAM.followAltitude * (1 + dev * 1.8),
+    };
+    this.ctx = { design: cfg.design, prog, drag };
   }
 
   ignite(): void {
@@ -201,13 +222,21 @@ export class Simulation {
     if (!this.ascent || !this.ctx || !this.cfg) return;
     const d = this.cfg.design;
 
-    // Split the step at propellant depletion so RK4 never integrates across it.
+    // Split the step at propellant/booster depletion so RK4 never integrates
+    // across a discontinuity.
     let remaining = dt;
     while (remaining > 1e-9) {
-      const tDep = timeToDepletion(this.ascent, d);
+      const tDep = Math.min(
+        timeToDepletion(this.ascent, d),
+        timeToBoosterDepletion(this.ascent, d),
+      );
       const sub = Math.min(remaining, tDep > 0 ? tDep : remaining);
       this.ascent = rk4Step(this.ascent, this.ctx, sub);
       remaining -= sub;
+      if (this.ascent.boostersOn && this.ascent.boosterProp <= 1e-6) {
+        this.ascent.boostersOn = false; // casings drop
+        this.emit('BOOSTER_SEP');
+      }
       if (this.ascent.propRemaining <= 1e-6 && this.ascent.engineOn) this.handleBurnout();
       if (this.phase !== 'ascent') return;
     }
@@ -456,6 +485,10 @@ export class Simulation {
       throttle: s.throttle,
       activeStage: s.stageIndex,
       stages,
+      boosterFuelFrac:
+        s.boostersOn && d.boosters
+          ? s.boosterProp / (d.boosters.spec.propMass * d.boosters.count)
+          : undefined,
       fairingOn: s.fairingOn,
       rEci,
       vEci,

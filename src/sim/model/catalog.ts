@@ -332,7 +332,7 @@ export const STAGE_PRESETS: Record<string, StageSpec> = Object.fromEntries(
     B('shuttle-srb', 'Shuttle SRB', 'solid', 'srb-shuttle', 1, 91, 500, 'Space Shuttle / SLS', { diameterM: 3.7, lengthM: 45.5, hull: 'white' }),
     // ── Upper stages ──
     B('falcon9-s2', 'Falcon 9 second stage', 'upper', 'merlin-vac', 1, 4.0, 107.5, 'SpaceX Falcon 9', { diameterM: 3.7, lengthM: 13.8, hull: 'white' }),
-    B('starship-ship', 'Starship (ship)', 'spaceship', 'raptor-vac', 3, 100, 1200, 'SpaceX Starship', { diameterM: 9, lengthM: 52, hull: 'steel' }),
+    B('starship-ship', 'Starship (ship)', 'spaceship', 'raptor-vac', 3, 100, 1200, 'SpaceX Starship', { diameterM: 9, lengthM: 52, hull: 'steel', shape: 'starship' }),
     B('saturn-v-s2', 'Saturn V S-II', 'upper', 'j-2', 5, 40, 456, 'Apollo / Saturn V', { diameterM: 10.1, lengthM: 24.9, hull: 'white' }),
     B('saturn-v-s4b', 'Saturn V S-IVB', 'upper', 'j-2', 1, 13.5, 109.5, 'Apollo / Saturn V', { diameterM: 6.6, lengthM: 17.8, hull: 'white' }),
     B('centaur-iii', 'Centaur III', 'upper', 'rl10b-2', 1, 2.3, 20.8, 'Atlas V', { diameterM: 3.05, lengthM: 12.7, hull: 'steel' }),
@@ -351,8 +351,8 @@ export const STAGE_PRESETS: Record<string, StageSpec> = Object.fromEntries(
     // ── More solids ──
     B('lvm3-s200', 'LVM3 S200 solid booster', 'solid', 's200', 1, 31, 205, 'ISRO LVM3', { diameterM: 3.2, lengthM: 26.2, hull: 'white' }),
     // ── Spaceships ──
-    B('apollo-csm', 'Apollo Command & Service Module', 'spaceship', 'sps', 1, 11.9, 18.4, 'Apollo program', { diameterM: 3.9, lengthM: 11, hull: 'steel' }),
-    B('orion-esm', 'Orion + European Service Module', 'spaceship', 'aj10-orion', 1, 15.5, 9, 'NASA Artemis', { diameterM: 5, lengthM: 7.3, hull: 'white' }),
+    B('apollo-csm', 'Apollo Command & Service Module', 'spaceship', 'sps', 1, 11.9, 18.4, 'Apollo program', { diameterM: 3.9, lengthM: 11, hull: 'steel', shape: 'capsule' }),
+    B('orion-esm', 'Orion + European Service Module', 'spaceship', 'aj10-orion', 1, 15.5, 9, 'NASA Artemis', { diameterM: 5, lengthM: 7.3, hull: 'white', shape: 'capsule' }),
     // ── More kick stages ──
     B('fregat', 'Fregat tug', 'kick', 's5-92', 1, 0.95, 5.35, 'Soyuz / Fregat', { diameterM: 3.35, lengthM: 1.5, hull: 'steel' }),
   ].map((s) => [s.id, s]),

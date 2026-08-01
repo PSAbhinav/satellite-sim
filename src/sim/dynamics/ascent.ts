@@ -21,6 +21,9 @@ export interface AscentState {
   v: Vec2;
   stageIndex: number;
   propRemaining: number; // kg in current stage
+  /** Total propellant left across all strap-on boosters (0 = none/jettisoned). */
+  boosterProp: number;
+  boostersOn: boolean;
   fairingOn: boolean;
   throttle: number;
   engineOn: boolean;
@@ -52,7 +55,9 @@ export function currentMass(s: AscentState, d: RocketDesign): number {
     return d.payload.mass + (s.fairingOn ? d.fairing.mass : 0);
   }
   const stage = d.stages[s.stageIndex];
-  return massAboveStage(d, s.stageIndex, s.fairingOn) + stage.dryMass + s.propRemaining;
+  const boosters =
+    s.boostersOn && d.boosters ? d.boosters.spec.dryMass * d.boosters.count + s.boosterProp : 0;
+  return massAboveStage(d, s.stageIndex, s.fairingOn) + stage.dryMass + s.propRemaining + boosters;
 }
 
 /** Total acceleration + bookkeeping at a given (r, v, mass) point. */
@@ -61,6 +66,7 @@ function accelAt(
   r: Vec2,
   v: Vec2,
   prop: number,
+  bProp: number,
   ctx: AscentContext,
 ): { a: Vec2; feltA: Vec2; q: number; airspeed: number; thrust: number; mass: number } {
   const d = ctx.design;
@@ -68,13 +74,17 @@ function accelAt(
   const stageDone = s.stageIndex >= d.stages.length;
   const stage = stageDone ? null : d.stages[s.stageIndex];
 
-  const state = { ...s, propRemaining: prop };
+  const state = { ...s, propRemaining: prop, boosterProp: bProp };
   const mass = currentMass(state, d);
 
   let aThrust: Vec2 = { x: 0, y: 0 };
   let thrust = 0;
   if (stage && s.engineOn && prop > 0 && s.throttle > 0) {
     thrust = thrustAt(stage, s.throttle, alt);
+    // Strap-on boosters burn in parallel with the core.
+    if (s.boostersOn && d.boosters && bProp > 0) {
+      thrust += thrustAt(d.boosters.spec, s.throttle, alt) * d.boosters.count;
+    }
     // Steer along the AIR-relative velocity (zero angle of attack).
     const vRel = sub2(v, atmosphereVelocity(r, ctx.drag.downrangeSign, ctx.drag.atmFactor));
     const dir = thrustDirection(r, vRel, alt, ctx.drag.downrangeSign, ctx.prog);
@@ -104,19 +114,24 @@ export function rk4Step(s: AscentState, ctx: AscentContext, dt: number): AscentS
   const stage = s.stageIndex < d.stages.length ? d.stages[s.stageIndex] : null;
   const burning = !!stage && s.engineOn && s.propRemaining > 0 && s.throttle > 0;
   const mdot = burning && stage ? massFlow(stage.engine) * stage.engineCount * s.throttle : 0;
+  const mdotB =
+    burning && s.boostersOn && d.boosters && s.boosterProp > 0
+      ? massFlow(d.boosters.spec.engine) * d.boosters.spec.engineCount * d.boosters.count * s.throttle
+      : 0;
 
   const prop = (dtx: number) => Math.max(0, s.propRemaining - mdot * dtx);
+  const bProp = (dtx: number) => Math.max(0, s.boosterProp - mdotB * dtx);
 
-  const k1 = accelAt(s, s.r, s.v, prop(0), ctx);
+  const k1 = accelAt(s, s.r, s.v, prop(0), bProp(0), ctx);
   const r2 = add2(s.r, scale2(s.v, dt / 2));
   const v2 = add2(s.v, scale2(k1.a, dt / 2));
-  const k2 = accelAt(s, r2, v2, prop(dt / 2), ctx);
+  const k2 = accelAt(s, r2, v2, prop(dt / 2), bProp(dt / 2), ctx);
   const r3 = add2(s.r, scale2(v2, dt / 2));
   const v3 = add2(s.v, scale2(k2.a, dt / 2));
-  const k3 = accelAt(s, r3, v3, prop(dt / 2), ctx);
+  const k3 = accelAt(s, r3, v3, prop(dt / 2), bProp(dt / 2), ctx);
   const r4 = add2(s.r, scale2(v3, dt));
   const v4 = add2(s.v, scale2(k3.a, dt));
-  const k4 = accelAt(s, r4, v4, prop(dt), ctx);
+  const k4 = accelAt(s, r4, v4, prop(dt), bProp(dt), ctx);
 
   const rNext = add2(
     s.r,
@@ -133,6 +148,7 @@ export function rk4Step(s: AscentState, ctx: AscentContext, dt: number): AscentS
     r: rNext,
     v: vNext,
     propRemaining: prop(dt),
+    boosterProp: bProp(dt),
   };
 }
 
@@ -144,8 +160,24 @@ export function timeToDepletion(s: AscentState, d: RocketDesign): number {
   return mdot > 0 ? s.propRemaining / mdot : Infinity;
 }
 
+/** Seconds until the strap-on boosters run dry (Infinity if none burning). */
+export function timeToBoosterDepletion(s: AscentState, d: RocketDesign): number {
+  if (!s.boostersOn || !d.boosters || s.boosterProp <= 0 || !s.engineOn || s.throttle <= 0)
+    return Infinity;
+  const mdot =
+    massFlow(d.boosters.spec.engine) * d.boosters.spec.engineCount * d.boosters.count * s.throttle;
+  return mdot > 0 ? s.boosterProp / mdot : Infinity;
+}
+
 export function computeDerived(s: AscentState, ctx: AscentContext): AscentDerived {
-  const { feltA, q, airspeed, thrust, mass } = accelAt(s, s.r, s.v, s.propRemaining, ctx);
+  const { feltA, q, airspeed, thrust, mass } = accelAt(
+    s,
+    s.r,
+    s.v,
+    s.propRemaining,
+    s.boosterProp,
+    ctx,
+  );
   const alt = mag2(s.r) - R_EARTH;
   const speed = mag2(s.v);
   const rHat = scale2(s.r, 1 / mag2(s.r));

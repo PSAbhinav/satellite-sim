@@ -10,12 +10,14 @@ import { telemetryBus } from '@/sim/runtime/telemetryBus';
 
 const M = 1 / 5; // metres → scene units
 
+// Metalness stays moderate — without an environment map, high-metalness
+// surfaces render nearly black.
 const HULLS: Record<StageVisual['hull'], { color: string; roughness: number; metalness: number }> = {
-  white: { color: '#e9edf4', roughness: 0.45, metalness: 0.15 },
-  steel: { color: '#b9bec6', roughness: 0.25, metalness: 0.85 },
+  white: { color: '#e9edf4', roughness: 0.45, metalness: 0.1 },
+  steel: { color: '#cdd2d9', roughness: 0.35, metalness: 0.45 },
   orange: { color: '#d9822e', roughness: 0.75, metalness: 0.05 },
-  black: { color: '#22252b', roughness: 0.5, metalness: 0.4 },
-  bronze: { color: '#b3906a', roughness: 0.45, metalness: 0.55 },
+  black: { color: '#2b2e34', roughness: 0.5, metalness: 0.25 },
+  bronze: { color: '#b3906a', roughness: 0.45, metalness: 0.35 },
 };
 
 /** Fallback for stages without visual data — estimated from propellant load. */
@@ -31,10 +33,39 @@ export function visualOf(s: StageSpec): StageVisual {
 
 export const stageUnits = (s: StageSpec) => visualOf(s).lengthM * M;
 
-/** Total stack height in scene units (stages + fairing). */
+/** Capsules and Starship carry their own nose — no fairing above them. */
+const providesNose = (s: StageSpec) => {
+  const shape = visualOf(s).shape;
+  return shape === 'capsule' || shape === 'starship';
+};
+
+/** Total stack height in scene units (stages + fairing when needed). */
 export function stackUnits(design: RocketDesign): number {
-  const topDia = visualOf(design.stages[design.stages.length - 1]).diameterM * M;
-  return design.stages.reduce((h, s) => h + stageUnits(s), 0) + topDia * 3.2;
+  const top = design.stages[design.stages.length - 1];
+  const fair = providesNose(top) ? 0 : visualOf(top).diameterM * M * 2.6;
+  return design.stages.reduce((h, s) => h + stageUnits(s), 0) + fair;
+}
+
+/** Smooth ogive nose profile (quarter-cosine), far more rocket-like than a cone. */
+function ogiveGeometry(r: number, h: number): THREE.LatheGeometry {
+  const pts: THREE.Vector2[] = [];
+  for (let i = 0; i <= 16; i++) {
+    const t = i / 16;
+    pts.push(new THREE.Vector2(Math.max(r * Math.cos((t * Math.PI) / 2), 0.001), t * h));
+  }
+  return new THREE.LatheGeometry(pts, 28);
+}
+
+/** Truncated-cone capsule with a rounded shoulder (Apollo/Orion profile). */
+function capsuleGeometry(r: number, h: number): THREE.LatheGeometry {
+  const pts = [
+    new THREE.Vector2(r, 0),
+    new THREE.Vector2(r * 0.98, h * 0.08),
+    new THREE.Vector2(r * 0.42, h * 0.85),
+    new THREE.Vector2(r * 0.3, h * 0.97),
+    new THREE.Vector2(0.001, h),
+  ];
+  return new THREE.LatheGeometry(pts, 28);
 }
 
 function Stage({ s, y }: { s: StageSpec; y: number }) {
@@ -44,6 +75,83 @@ function Stage({ s, y }: { s: StageSpec; y: number }) {
   const hull = HULLS[v.hull];
   const bells = Math.min(s.engineCount, 9);
   const bellR = Math.min(r * 0.42, (r * 1.7) / Math.max(1, Math.ceil(Math.sqrt(bells))));
+
+  // ── Capsule spacecraft: service module + capsule + escape tower ──
+  if (v.shape === 'capsule') {
+    const smH = h * 0.55;
+    const capH = h * 0.45;
+    const towerH = capH * 1.1;
+    return (
+      <group name="stage-holder" position={[0, y, 0]}>
+        {/* Service module */}
+        <mesh position={[0, smH / 2, 0]}>
+          <cylinderGeometry args={[r * 0.92, r * 0.92, smH, 28]} />
+          <meshStandardMaterial {...hull} />
+        </mesh>
+        {/* SPS nozzle */}
+        <mesh position={[0, -bellR, 0]}>
+          <coneGeometry args={[bellR * 0.9, bellR * 2, 14, 1, true]} />
+          <meshStandardMaterial color="#3a4048" roughness={0.35} metalness={0.75} side={THREE.DoubleSide} />
+        </mesh>
+        {/* Capsule (rounded truncated cone) */}
+        <mesh position={[0, smH, 0]} geometry={capsuleGeometry(r * 0.92, capH)}>
+          <meshStandardMaterial color="#c4c9d1" roughness={0.3} metalness={0.5} />
+        </mesh>
+        {/* Heat shield lip */}
+        <mesh position={[0, smH + 0.01, 0]}>
+          <cylinderGeometry args={[r * 0.95, r * 0.9, 0.05, 28]} />
+          <meshStandardMaterial color="#5a4632" roughness={0.8} />
+        </mesh>
+        {/* Launch escape tower */}
+        <mesh position={[0, smH + capH + towerH / 2, 0]}>
+          <cylinderGeometry args={[r * 0.05, r * 0.05, towerH, 10]} />
+          <meshStandardMaterial color="#d8dce2" roughness={0.5} />
+        </mesh>
+        <mesh position={[0, smH + capH + towerH + r * 0.14, 0]}>
+          <coneGeometry args={[r * 0.12, r * 0.4, 12]} />
+          <meshStandardMaterial color="#c8433a" roughness={0.6} />
+        </mesh>
+      </group>
+    );
+  }
+
+  // ── Starship: body + ogive nose + fore/aft flaps ──
+  if (v.shape === 'starship') {
+    const bodyH = h * 0.7;
+    const noseH = h * 0.3;
+    const flap = (fy: number, fh: number) =>
+      [-1, 1].map((side) => (
+        <mesh key={side + fy} position={[side * (r + 0.03), fy, 0]}>
+          <boxGeometry args={[0.08, fh, r * 1.1]} />
+          <meshStandardMaterial color="#33373d" roughness={0.5} metalness={0.6} />
+        </mesh>
+      ));
+    return (
+      <group name="stage-holder" position={[0, y, 0]}>
+        <mesh position={[0, bodyH / 2, 0]}>
+          <cylinderGeometry args={[r, r, bodyH, 28]} />
+          <meshStandardMaterial {...hull} />
+        </mesh>
+        <mesh position={[0, bodyH, 0]} geometry={ogiveGeometry(r, noseH)}>
+          <meshStandardMaterial {...hull} />
+        </mesh>
+        {/* Aft + forward flaps */}
+        {flap(bodyH * 0.14, bodyH * 0.28)}
+        {flap(bodyH + noseH * 0.25, noseH * 0.5)}
+        {/* Raptor bells */}
+        {Array.from({ length: bells }).map((_, e) => {
+          const ring = bells > 1 ? r * 0.5 : 0;
+          const a = (e / Math.max(bells, 1)) * Math.PI * 2;
+          return (
+            <mesh key={e} position={[Math.cos(a) * ring, -bellR * 0.9, Math.sin(a) * ring]}>
+              <coneGeometry args={[bellR, bellR * 2.2, 14, 1, true]} />
+              <meshStandardMaterial color="#3a4048" roughness={0.35} metalness={0.75} side={THREE.DoubleSide} />
+            </mesh>
+          );
+        })}
+      </group>
+    );
+  }
 
   return (
     <group name={`stage-holder`} position={[0, y + h / 2, 0]}>
@@ -121,9 +229,11 @@ export function ProceduralRocket3D({
   }, [design]);
 
   const s0 = visualOf(design.stages[0]);
-  const topStage = visualOf(design.stages[design.stages.length - 1]);
+  const top = design.stages[design.stages.length - 1];
+  const topStage = visualOf(top);
   const fairR = (topStage.diameterM / 2) * M;
-  const fairH = fairR * 2 * 3.2;
+  const fairH = fairR * 2 * 2.6;
+  const showFairing = !providesNose(top);
 
   useFrame(() => {
     if (display) return;
@@ -148,8 +258,13 @@ export function ProceduralRocket3D({
       });
       const fairing = groupRef.current.getObjectByName('fairing');
       if (fairing) fairing.visible = snap.fairingOn;
+      const sideBoosters = groupRef.current.getObjectByName('side-boosters');
+      if (sideBoosters) sideBoosters.visible = snap.boosterFuelFrac !== undefined;
     }
   });
+
+  const bv = design.boosters ? visualOf(design.boosters.spec) : null;
+  const coreR = (s0.diameterM / 2) * M;
 
   return (
     <group ref={groupRef}>
@@ -158,13 +273,41 @@ export function ProceduralRocket3D({
           <Stage s={s} y={layout.ys[i]} />
         </group>
       ))}
-      {/* Fairing: ogive nose sized to the top stage's diameter */}
-      <group name="fairing" position={[0, layout.top + fairH / 2, 0]}>
-        <mesh>
-          <coneGeometry args={[fairR, fairH, 28]} />
-          <meshStandardMaterial color="#e9edf4" roughness={0.45} metalness={0.15} />
-        </mesh>
-      </group>
+      {/* Strap-on side boosters around the core */}
+      {design.boosters && bv && (
+        <group name="side-boosters">
+          {Array.from({ length: design.boosters.count }).map((_, i) => {
+            const a = (i / design.boosters!.count) * Math.PI * 2;
+            const br = (bv.diameterM / 2) * M;
+            const bh = bv.lengthM * M;
+            const off = coreR + br + 0.02;
+            return (
+              <group key={i} position={[Math.cos(a) * off, 0, Math.sin(a) * off]}>
+                <mesh position={[0, bh / 2, 0]}>
+                  <cylinderGeometry args={[br, br, bh, 20]} />
+                  <meshStandardMaterial {...HULLS[bv.hull]} />
+                </mesh>
+                <mesh position={[0, bh, 0]} geometry={ogiveGeometry(br, br * 2.2)}>
+                  <meshStandardMaterial {...HULLS[bv.hull]} />
+                </mesh>
+                <mesh position={[0, -br * 0.8, 0]}>
+                  <coneGeometry args={[br * 0.55, br * 1.4, 12, 1, true]} />
+                  <meshStandardMaterial color="#3a4048" roughness={0.35} metalness={0.6} side={THREE.DoubleSide} />
+                </mesh>
+              </group>
+            );
+          })}
+        </group>
+      )}
+      {/* Fairing: smooth ogive sized to the top stage — omitted when the top
+          stage is a spacecraft with its own nose. */}
+      {showFairing && (
+        <group name="fairing" position={[0, layout.top, 0]}>
+          <mesh geometry={ogiveGeometry(fairR, fairH)}>
+            <meshStandardMaterial color="#e9edf4" roughness={0.45} metalness={0.15} />
+          </mesh>
+        </group>
+      )}
       {/* Exhaust plume */}
       <mesh ref={plumeRef} position={[0, -0.9, 0]} visible={false}>
         <coneGeometry args={[(s0.diameterM / 2) * M * 0.7, 1.6, 14, 1, true]} />
