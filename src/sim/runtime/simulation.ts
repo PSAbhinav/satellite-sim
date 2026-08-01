@@ -314,6 +314,11 @@ export class Simulation {
   private handleBurnout(): void {
     if (!this.ascent || !this.cfg) return;
     const d = this.cfg.design;
+    // Strap-ons never ride past core staging — jettison with the core.
+    if (this.ascent.boostersOn) {
+      this.ascent.boostersOn = false;
+      this.emit('BOOSTER_SEP');
+    }
     const isLast = this.ascent.stageIndex >= d.stages.length - 1;
 
     if (!isLast) {

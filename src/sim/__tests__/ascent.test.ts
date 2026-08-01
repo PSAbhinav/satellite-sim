@@ -173,6 +173,37 @@ describe('parallel staging (side boosters)', () => {
   });
 });
 
+describe('full flight with side boosters (end-to-end)', () => {
+  it('F9 + 2 strap-on URMs: liftoff → booster sep → SECO → circularize → orbit', () => {
+    const design = {
+      ...defaultDesign(),
+      boosters: { spec: STAGE_PRESETS['angara-urm1'], count: 2 },
+    };
+    const sim = new Simulation();
+    sim.configure({ design, site: SITES.cape, targetAltitude: 550e3 });
+    runToEnd(sim);
+    expect(sim.phase).toBe('coast');
+
+    const types = sim.allEvents().map((e) => e.type);
+    expect(types).toContain('BOOSTER_SEP');
+    expect(types.indexOf('BOOSTER_SEP')).toBeLessThan(types.indexOf('STAGE_SEP'));
+
+    // Warp to apoapsis and circularize.
+    let guard = 0;
+    while (sim.phase === 'coast' && guard++ < 100_000) {
+      const tta = sim.snapshot().orbit!.timeToApoapsisS;
+      if (tta <= 5) break;
+      sim.step(Math.max(0.02, Math.min(10, tta - 3)));
+    }
+    sim.circularize();
+    expect(sim.phase).toBe('orbit');
+    expect(sim.result?.outcome).toBe('orbit');
+    const orbit = sim.snapshot().orbit!;
+    expect(orbit.periapsisAlt).toBeGreaterThan(200e3);
+    expect(orbit.eccentricity).toBeLessThan(0.05);
+  });
+});
+
 describe('weather & launch commit', () => {
   it('weather is deterministic per (site, day)', () => {
     const a = generateWeather(SITES.cape, 3);
