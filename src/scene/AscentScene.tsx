@@ -148,7 +148,7 @@ function LiftoffSmoke() {
   );
 }
 
-function SceneContent({ design }: { design: RocketDesign }) {
+function SceneContent({ design, cinematic }: { design: RocketDesign; cinematic?: boolean }) {
   const rocketRef = useRef<THREE.Group>(null);
   const worldRef = useRef<THREE.Group>(null);
   const starsRef = useRef<THREE.Group>(null);
@@ -234,15 +234,24 @@ function SceneContent({ design }: { design: RocketDesign }) {
         maxDistance={60}
         target={[0, 4, 0]}
         maxPolarAngle={Math.PI / 2 - 0.06}
+        autoRotate={cinematic}
+        autoRotateSpeed={0.6}
       />
     </>
   );
 }
 
-export function AscentScene({ design }: { design: RocketDesign }) {
+export function AscentScene({
+  design,
+  cinematic = false,
+}: {
+  design: RocketDesign;
+  /** Slow auto-orbit around the pad — used during the countdown. */
+  cinematic?: boolean;
+}) {
   return (
     <SceneCanvas camera={{ position: [11, 5.5, 14], fov: 40, far: 30000 }}>
-      <SceneContent design={design} />
+      <SceneContent design={design} cinematic={cinematic} />
     </SceneCanvas>
   );
 }

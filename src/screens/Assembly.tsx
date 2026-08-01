@@ -17,7 +17,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { InfoChip } from '@/components/InfoChip';
-import { RocketSilhouette } from '@/components/RocketSilhouette';
+import { VehicleViewer } from '@/scene/VehicleViewer';
 import { STAGE_PRESETS } from '@/sim/model/catalog';
 import type { StageSpec } from '@/sim/model/rocket';
 import {
@@ -165,8 +165,8 @@ export default function Assembly() {
             {kgToT(mass).toFixed(1)} t on the pad · payload {design.payload.mass} kg
           </span>
         </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 items-center justify-center py-2">
-          <RocketSilhouette design={design} />
+        <CardContent className="min-h-0 flex-1 p-0">
+          <VehicleViewer design={design} />
         </CardContent>
         {/* Fitted-part detail strip */}
         <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-line p-2">

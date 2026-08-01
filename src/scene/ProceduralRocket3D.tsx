@@ -7,7 +7,14 @@ import * as THREE from 'three';
 import type { RocketDesign } from '@/sim/model/rocket';
 import { telemetryBus } from '@/sim/runtime/telemetryBus';
 
-export function ProceduralRocket3D({ design }: { design: RocketDesign }) {
+export function ProceduralRocket3D({
+  design,
+  display = false,
+}: {
+  design: RocketDesign;
+  /** Showroom mode: ignore telemetry — full stack, fairing on, engines off. */
+  display?: boolean;
+}) {
   const plumeRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
 
@@ -15,6 +22,7 @@ export function ProceduralRocket3D({ design }: { design: RocketDesign }) {
   const R = 0.35;
 
   useFrame(() => {
+    if (display) return;
     const snap = telemetryBus.get();
     if (!snap) return;
     // Flame length breathes with thrust and rides at the bottom of whichever
@@ -84,7 +92,7 @@ export function ProceduralRocket3D({ design }: { design: RocketDesign }) {
         </mesh>
       </group>
       {/* Exhaust plume */}
-      <mesh ref={plumeRef} position={[0, -0.9, 0]}>
+      <mesh ref={plumeRef} position={[0, -0.9, 0]} visible={false}>
         <coneGeometry args={[0.22, 1.6, 14, 1, true]} />
         <meshBasicMaterial
           color="#ffb347"

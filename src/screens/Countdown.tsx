@@ -81,7 +81,8 @@ export default function Countdown() {
 
   return (
     <div className="relative h-[calc(100vh-3rem)] overflow-hidden">
-      <AscentScene design={design} />
+      {/* Cinematic slow orbit around the pad while the count runs. */}
+      <AscentScene design={design} cinematic />
 
       {/* Mission strap, top center */}
       <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
