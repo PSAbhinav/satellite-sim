@@ -4,19 +4,12 @@
 import { useMemo } from 'react';
 import { OrbitControls } from '@react-three/drei';
 import type { RocketDesign } from '@/sim/model/rocket';
-import { ProceduralRocket3D } from './ProceduralRocket3D';
+import { ProceduralRocket3D, stackUnits } from './ProceduralRocket3D';
 import { SceneCanvas } from './SceneCanvas';
 
-const FAIRING_H = 1.1;
-
 export function VehicleViewer({ design }: { design: RocketDesign }) {
-  // Same height formula the rocket builder uses — keeps the fit exact.
-  const totalH = useMemo(
-    () =>
-      design.stages.reduce((h, s) => h + Math.max(1.4, 0.8 * Math.cbrt(s.propMass / 1000)), 0) +
-      FAIRING_H,
-    [design],
-  );
+  // The builder's own height math — keeps the camera fit exact.
+  const totalH = useMemo(() => stackUnits(design), [design]);
   const dist = totalH * 1.35 + 2.5;
 
   return (

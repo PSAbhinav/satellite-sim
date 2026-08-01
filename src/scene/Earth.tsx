@@ -83,11 +83,40 @@ export function Earth({ radius = 1 }: { radius?: number }) {
         <sphereGeometry args={[radius * 1.008, 48, 48]} />
         <meshPhongMaterial map={cloudMap} transparent opacity={0.28} depthWrite={false} />
       </mesh>
-      {/* Thin atmosphere rim */}
+      {/* Atmosphere: fresnel rim glow — brightest at the limb, like the real
+          scattering halo in orbital photography. */}
       <mesh>
-        <sphereGeometry args={[radius * 1.02, 48, 48]} />
-        <meshBasicMaterial color="#4f7be8" transparent opacity={0.06} side={THREE.BackSide} />
+        <sphereGeometry args={[radius * 1.025, 48, 48]} />
+        <primitive object={atmosphereMaterial} attach="material" />
       </mesh>
     </group>
   );
 }
+
+const atmosphereMaterial = new THREE.ShaderMaterial({
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  side: THREE.FrontSide,
+  uniforms: { glowColor: { value: new THREE.Color('#5a8cff') } },
+  vertexShader: /* glsl */ `
+    varying vec3 vNormal;
+    varying vec3 vPosView;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vPosView = mv.xyz;
+      gl_Position = projectionMatrix * mv;
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform vec3 glowColor;
+    varying vec3 vNormal;
+    varying vec3 vPosView;
+    void main() {
+      vec3 viewDir = normalize(-vPosView);
+      float rim = pow(1.0 - abs(dot(normalize(vNormal), viewDir)), 3.0);
+      gl_FragColor = vec4(glowColor, rim * 0.9);
+    }
+  `,
+});

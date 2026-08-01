@@ -6,7 +6,9 @@ import { useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { SceneCanvas } from './SceneCanvas';
 import { OrbitControls } from '@react-three/drei';
+import { Bloom, EffectComposer } from '@react-three/postprocessing';
 import * as THREE from 'three';
+import { useUiStore } from '@/state/useUiStore';
 import type { RocketDesign } from '@/sim/model/rocket';
 import { telemetryBus } from '@/sim/runtime/telemetryBus';
 import { ProceduralRocket3D } from './ProceduralRocket3D';
@@ -153,6 +155,8 @@ function SceneContent({ design, cinematic }: { design: RocketDesign; cinematic?:
   const worldRef = useRef<THREE.Group>(null);
   const starsRef = useRef<THREE.Group>(null);
   const earthRef = useRef<THREE.Group>(null);
+  // drei's OrbitControls instance (typed loosely; we only touch target/update).
+  const controlsRef = useRef<{ target: THREE.Vector3; update: () => void } | null>(null);
   const { scene } = useThree();
   const sunTex = useMemo(softDiscTexture, []);
 
@@ -192,6 +196,15 @@ function SceneContent({ design, cinematic }: { design: RocketDesign; cinematic?:
       earthRef.current.position.y = -(EARTH_R + 450 + (alt / 1000) * 2.6);
     }
     if (starsRef.current) starsRef.current.visible = k > 0.45;
+
+    // Broadcast framing: as the vehicle leaves the atmosphere, ease the shot
+    // downward so the Earth limb below stays in frame instead of empty sky.
+    if (controlsRef.current) {
+      const t = Math.min(1, Math.max(0, (alt - 18_000) / 100_000));
+      const targetY = 4 - t * 16; // 4 at the pad → -12 in space
+      controlsRef.current.target.y += (targetY - controlsRef.current.target.y) * 0.03;
+      controlsRef.current.update();
+    }
   });
 
   return (
@@ -229,6 +242,8 @@ function SceneContent({ design, cinematic }: { design: RocketDesign; cinematic?:
 
       {/* maxPolarAngle keeps the camera above the horizon — no under-ground views. */}
       <OrbitControls
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ref={controlsRef as any}
         enablePan
         minDistance={4}
         maxDistance={60}
@@ -249,9 +264,16 @@ export function AscentScene({
   /** Slow auto-orbit around the pad — used during the countdown. */
   cinematic?: boolean;
 }) {
+  const lowGraphics = useUiStore((s) => s.lowGraphics);
   return (
     <SceneCanvas camera={{ position: [11, 5.5, 14], fov: 40, far: 30000 }}>
       <SceneContent design={design} cinematic={cinematic} />
+      {/* Bloom makes the exhaust plume and sun actually glow. */}
+      {!lowGraphics && (
+        <EffectComposer>
+          <Bloom intensity={0.8} luminanceThreshold={0.75} mipmapBlur />
+        </EffectComposer>
+      )}
     </SceneCanvas>
   );
 }

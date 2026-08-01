@@ -4,6 +4,18 @@ import type { EngineSpec } from './engine';
 import { massFlow } from './engine';
 import type { PayloadSpec } from './payload';
 
+/** Real-world appearance data so the 3D builder shows the actual hardware. */
+export interface StageVisual {
+  /** Body diameter, m. */
+  diameterM: number;
+  /** Stage length, m. */
+  lengthM: number;
+  hull: 'white' | 'steel' | 'orange' | 'black' | 'bronze';
+  gridFins?: boolean;
+  /** Dark interstage band at the top (Falcon-style). */
+  interstage?: boolean;
+}
+
 export interface StageSpec {
   id: string;
   name: string;
@@ -15,6 +27,7 @@ export interface StageSpec {
   propMass: number;
   /** Real vehicle this stage flies on (educational metadata). */
   heritage?: string;
+  visual?: StageVisual;
 }
 
 export interface Fairing {

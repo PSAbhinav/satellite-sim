@@ -6,6 +6,8 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { SceneCanvas } from './SceneCanvas';
 import { Line, OrbitControls } from '@react-three/drei';
+import { Bloom, EffectComposer } from '@react-three/postprocessing';
+import { useUiStore } from '@/state/useUiStore';
 import * as THREE from 'three';
 import { R_EARTH } from '@/sim/constants';
 import { telemetryBus } from '@/sim/runtime/telemetryBus';
@@ -101,8 +103,9 @@ function OrbitPath() {
 }
 
 export function OrbitScene() {
+  const lowGraphics = useUiStore((s) => s.lowGraphics);
   return (
-    <SceneCanvas camera={{ position: [0, 1.8, 3.6], fov: 45 }} >
+    <SceneCanvas camera={{ position: [0, 1.8, 3.6], fov: 45 }}>
       <color attach="background" args={['#05070f']} />
       <ambientLight intensity={0.25} />
       <directionalLight position={[50, 0, 20]} intensity={2} />
@@ -111,6 +114,11 @@ export function OrbitScene() {
       <Satellite />
       <OrbitPath />
       <OrbitControls enablePan minDistance={1.4} maxDistance={20} />
+      {!lowGraphics && (
+        <EffectComposer>
+          <Bloom intensity={0.5} luminanceThreshold={0.8} mipmapBlur />
+        </EffectComposer>
+      )}
     </SceneCanvas>
   );
 }
