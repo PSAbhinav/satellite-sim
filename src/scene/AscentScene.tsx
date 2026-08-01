@@ -252,9 +252,14 @@ function SceneContent({ design, cinematic }: { design: RocketDesign; cinematic?:
       const pitch = ((90 - snap.flightPathAngleDeg) * Math.PI) / 180;
       rocketRef.current.rotation.z = -Math.min(Math.max(pitch, 0), Math.PI / 2.2);
     }
-    // The pad diorama slides away below (log scale keeps liftoff readable).
+    // Near the pad the world moves at TRUE scale (1 unit = 5 m) so clearing
+    // the tower LOOKS like clearing the tower; beyond 400 m distance
+    // compresses logarithmically so the diorama stays in frame longer.
     if (worldRef.current) {
-      worldRef.current.position.y = -Math.log10(1 + alt / 8) * 4.2;
+      const NEAR = 400; // metres of true-scale motion
+      const nearOff = Math.min(alt, NEAR) / 5;
+      const farOff = alt > NEAR ? Math.log10(1 + (alt - NEAR) / 50) * 30 : 0;
+      worldRef.current.position.y = -(nearOff + farOff);
       worldRef.current.visible = alt < 25_000;
     }
     // From ~20 km up, the real view takes over: Earth's limb below, curving
