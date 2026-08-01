@@ -49,3 +49,5 @@ Earth textures derived from NASA Blue Marble imagery (via the original
 Satellite-Sim repos, recompressed). Music and sound are synthesized live in
 Web Audio — no audio assets. Built with React 19, three.js/R3F, zustand,
 uPlot, Radix, Tailwind v4.
+
+Planet textures by Solar System Scope (solarsystemscope.com/textures), CC BY 4.0.
