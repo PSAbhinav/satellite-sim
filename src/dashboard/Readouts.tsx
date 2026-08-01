@@ -45,11 +45,11 @@ export function LeftRail() {
     12,
   );
   if (!t) return null;
+  // Altitude & speed live on the strip charts — FIDO shows only what
+  // isn't displayed anywhere else on the console.
   return (
     <div className="grid grid-cols-1 gap-1.5">
-      <BigStat label="Altitude" value={(Math.max(0, t.alt) / 1000).toFixed(1)} unit="km" accent />
-      <BigStat label="Speed" value={(t.speed / 1000).toFixed(2)} unit="km/s" />
-      <BigStat label="Vert. speed" value={t.vs.toFixed(0)} unit="m/s" />
+      <BigStat label="Vert. speed" value={t.vs.toFixed(0)} unit="m/s" accent />
       <BigStat label="Downrange" value={(t.downrange / 1000).toFixed(0)} unit="km" />
       <BigStat label="Mach" value={t.mach.toFixed(1)} unit="" conceptId="mach" />
       <BigStat label="G-force" value={t.g.toFixed(1)} unit="g" conceptId="g-force" />

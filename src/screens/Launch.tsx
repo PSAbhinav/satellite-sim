@@ -65,24 +65,20 @@ function ConsoleLabel({ station, desc }: { station: string; desc: string }) {
 }
 
 function BigBoardClocks() {
-  const t = useTelemetry((s) => ({ t: s.t, phase: s.phase, alt: s.altitude, v: s.speed }), 10);
+  // The big board owns the clock and phase only — every number lives in
+  // exactly one place on this console (charts: alt/speed; FIDO: the rest).
+  const t = useTelemetry((s) => ({ t: s.t, phase: s.phase }), 10);
   return (
     <div className="flex h-full flex-col justify-center gap-1 px-3">
       <div className="font-display text-[10px] uppercase tracking-[0.25em] text-muted-star">
         Mission elapsed time
       </div>
       <div className="telemetry text-4xl font-bold text-phosphor">{sToMinSec(t?.t ?? 0)}</div>
-      <div className="mt-1 flex gap-4 text-[11px] text-muted-star">
-        <span>
-          PHASE{' '}
-          <span className="font-display uppercase text-starlight">
-            {t?.phase === 'ascent' ? 'Powered flight' : (t?.phase ?? 'pad')}
-          </span>
+      <div className="mt-2 text-[11px] text-muted-star">
+        PHASE{' '}
+        <span className="font-display uppercase text-starlight">
+          {t?.phase === 'ascent' ? 'Powered flight' : (t?.phase ?? 'pad')}
         </span>
-      </div>
-      <div className="telemetry mt-1 flex gap-4 text-xs text-muted-star">
-        <span>ALT {(Math.max(0, t?.alt ?? 0) / 1000).toFixed(1)} km</span>
-        <span>VEL {((t?.v ?? 0) / 1000).toFixed(2)} km/s</span>
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ import type { RocketDesign } from '@/sim/model/rocket';
 import { telemetryBus } from '@/sim/runtime/telemetryBus';
 import { ProceduralRocket3D } from './ProceduralRocket3D';
 import { Starfield } from './Starfield';
+import { Earth } from './Earth';
 
 function softDiscTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
@@ -151,8 +152,12 @@ function SceneContent({ design }: { design: RocketDesign }) {
   const rocketRef = useRef<THREE.Group>(null);
   const worldRef = useRef<THREE.Group>(null);
   const starsRef = useRef<THREE.Group>(null);
+  const earthRef = useRef<THREE.Group>(null);
   const { scene } = useThree();
   const sunTex = useMemo(softDiscTexture, []);
+
+  // Stylized planet below the vehicle once the pad diorama fades out.
+  const EARTH_R = 3000;
 
   useFrame(() => {
     const snap = telemetryBus.get();
@@ -174,10 +179,16 @@ function SceneContent({ design }: { design: RocketDesign }) {
       const pitch = ((90 - snap.flightPathAngleDeg) * Math.PI) / 180;
       rocketRef.current.rotation.z = -Math.min(Math.max(pitch, 0), Math.PI / 2.2);
     }
-    // The world slides away below (log scale keeps liftoff readable).
+    // The pad diorama slides away below (log scale keeps liftoff readable).
     if (worldRef.current) {
       worldRef.current.position.y = -Math.log10(1 + alt / 8) * 4.2;
-      worldRef.current.visible = alt < 45_000;
+      worldRef.current.visible = alt < 25_000;
+    }
+    // From ~20 km up, the real view takes over: Earth's limb below, curving
+    // away as altitude grows (compressed scale so the horizon stays in frame).
+    if (earthRef.current) {
+      earthRef.current.visible = alt > 18_000;
+      earthRef.current.position.y = -(EARTH_R + 40 + (alt / 1000) * 2.2);
     }
     if (starsRef.current) starsRef.current.visible = k > 0.45;
   });
@@ -211,6 +222,10 @@ function SceneContent({ design }: { design: RocketDesign }) {
         <LiftoffSmoke />
       </group>
 
+      <group ref={earthRef} visible={false}>
+        <Earth radius={EARTH_R} />
+      </group>
+
       {/* maxPolarAngle keeps the camera above the horizon — no under-ground views. */}
       <OrbitControls
         enablePan
@@ -225,7 +240,7 @@ function SceneContent({ design }: { design: RocketDesign }) {
 
 export function AscentScene({ design }: { design: RocketDesign }) {
   return (
-    <SceneCanvas camera={{ position: [11, 5.5, 14], fov: 40 }} >
+    <SceneCanvas camera={{ position: [11, 5.5, 14], fov: 40, far: 30000 }}>
       <SceneContent design={design} />
     </SceneCanvas>
   );
