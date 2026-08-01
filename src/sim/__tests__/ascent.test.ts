@@ -54,7 +54,7 @@ describe('full ascent (default stack, Cape, 550 km target)', () => {
     });
     runToEnd(sim);
     const types = sim.allEvents().map((e) => e.type);
-    const order = ['LIFTOFF', 'TOWER_CLEARED', 'PITCH_KICK', 'SUPERSONIC', 'MAX_Q', 'MECO', 'STAGE_SEP', 'STAGE_IGNITION', 'SECO'];
+    const order = ['LIFTOFF', 'TOWER_CLEARED', 'PITCH_KICK', 'SUPERSONIC', 'MAX_Q', 'MECO', 'STAGE_SEP', 'STAGE_IGNITION', 'SECO'] as const;
     let idx = -1;
     for (const t of order) {
       const found = types.indexOf(t);

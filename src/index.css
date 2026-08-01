@@ -1,1 +1,122 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import '@fontsource/chakra-petch/500.css';
+@import '@fontsource/chakra-petch/600.css';
+@import '@fontsource/chakra-petch/700.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* ── Mission-console space theme (single theme, always dark) ─────────────── */
+
+@theme {
+  --color-void: #070b14;
+  --color-console: #0d1526;
+  --color-console-2: #111b30;
+  --color-line: #1a2438;
+  --color-starlight: #e8edf7;
+  --color-muted-star: #8b96ad;
+  --color-phosphor: #5ee6c8;
+  --color-ion: #7c8cf8;
+  --color-flame: #f5a524;
+  --color-crimson: #f06a6a;
+  --color-go: #4ade80;
+
+  --font-display: 'Chakra Petch', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  --radius-panel: 6px;
+
+  --animate-blink: blink 1.2s step-end infinite;
+  @keyframes blink {
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
+
+/* shadcn-style semantic variables mapped onto the palette. */
+:root {
+  --background: var(--color-void);
+  --foreground: var(--color-starlight);
+  --card: var(--color-console);
+  --card-foreground: var(--color-starlight);
+  --popover: var(--color-console-2);
+  --popover-foreground: var(--color-starlight);
+  --primary: var(--color-ion);
+  --primary-foreground: #0a0f1e;
+  --secondary: var(--color-console-2);
+  --secondary-foreground: var(--color-starlight);
+  --muted: var(--color-console-2);
+  --muted-foreground: var(--color-muted-star);
+  --accent: var(--color-phosphor);
+  --accent-foreground: #062019;
+  --destructive: var(--color-crimson);
+  --border: var(--color-line);
+  --input: var(--color-line);
+  --ring: var(--color-ion);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-starlight);
+  font-family: var(--font-sans);
+  /* Faint nebula washes — the "galaxy colours" behind every screen. */
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% 0%, rgba(124, 140, 248, 0.07), transparent 60%),
+    radial-gradient(ellipse 50% 35% at 85% 100%, rgba(94, 230, 200, 0.05), transparent 60%),
+    radial-gradient(ellipse 40% 30% at 70% 20%, rgba(196, 113, 237, 0.04), transparent 60%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Every live telemetry digit: mono + tabular so numbers never jitter. */
+.telemetry {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3,
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ion);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

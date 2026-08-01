@@ -3,14 +3,17 @@
 
 export class SimClock {
   private acc = 0;
+  readonly fixedDt: number;
+  /** Clamp on real frame time so a background tab doesn't spiral. */
+  readonly maxFrame: number;
+  /** Hard cap on physics steps per frame at high warp. */
+  readonly maxStepsPerFrame: number;
 
-  constructor(
-    readonly fixedDt = 0.02,
-    /** Clamp on real frame time so a background tab doesn't spiral. */
-    readonly maxFrame = 0.25,
-    /** Hard cap on physics steps per frame at high warp. */
-    readonly maxStepsPerFrame = 400,
-  ) {}
+  constructor(fixedDt = 0.02, maxFrame = 0.25, maxStepsPerFrame = 400) {
+    this.fixedDt = fixedDt;
+    this.maxFrame = maxFrame;
+    this.maxStepsPerFrame = maxStepsPerFrame;
+  }
 
   /** Advance by realDt seconds of wall time at the given warp. Returns steps run. */
   advance(realDt: number, warp: number, step: (dt: number) => void): number {
