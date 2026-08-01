@@ -211,7 +211,14 @@ function SceneContent({ design }: { design: RocketDesign }) {
         <LiftoffSmoke />
       </group>
 
-      <OrbitControls enablePan minDistance={4} maxDistance={60} target={[0, 4, 0]} />
+      {/* maxPolarAngle keeps the camera above the horizon — no under-ground views. */}
+      <OrbitControls
+        enablePan
+        minDistance={4}
+        maxDistance={60}
+        target={[0, 4, 0]}
+        maxPolarAngle={Math.PI / 2 - 0.06}
+      />
     </>
   );
 }
