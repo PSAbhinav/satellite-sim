@@ -15,7 +15,6 @@ import { computeDerived, rk4Step, timeToDepletion } from '../dynamics/ascent';
 import { DEFAULT_PITCH_PROGRAM } from '../dynamics/steering';
 import type { OrbitalElements } from '../orbit/elements';
 import {
-  applyPrograde,
   elementsToState,
   periapsisRadius,
   period as orbitPeriod,
@@ -23,7 +22,12 @@ import {
 } from '../orbit/elements';
 import { propagateElements, timeToApoapsis } from '../orbit/kepler';
 import { classify } from '../orbit/classify';
-import { availableDeltaV, circularizationDeltaV, propForDeltaV } from '../orbit/maneuvers';
+import {
+  availableDeltaV,
+  circularizationDeltaV,
+  circularizeHereDeltaV,
+  propForDeltaV,
+} from '../orbit/maneuvers';
 import type { SimEvent } from './events';
 import { makeEvent } from './events';
 import type { FlightPhase, SimSnapshot, StageTelemetry } from './snapshot';
@@ -49,13 +53,23 @@ export interface MissionResult {
   dvShortfall?: number;
 }
 
-/** Lift a launch-plane 2D vector into ECI: plane = orbital plane at inc=site latitude. */
-function liftTo3D(p: Vec2, incRad: number): Vec3 {
-  // Launch plane XY → rotate about X axis by inclination.
+/**
+ * Lift a launch-plane 2D vector into ECI: rotate about X by the inclination,
+ * then about Z so the pad sits at the launch site's real longitude at t=0 —
+ * the orbit must start over the actual spaceport, not a random meridian.
+ */
+function liftTo3D(p: Vec2, incRad: number, lonRad: number): Vec3 {
+  // Mirror the 2D x so downrange maps to EASTWARD (prograde) motion — without
+  // it the lifted orbit is retrograde (i = 180° − latitude).
+  const x = -p.x;
+  const y = p.y * Math.cos(incRad);
+  const z = p.y * Math.sin(incRad);
+  const c = Math.cos(lonRad);
+  const s = Math.sin(lonRad);
   return {
-    x: p.x,
-    y: p.y * Math.cos(incRad),
-    z: p.y * Math.sin(incRad),
+    x: x * c - y * s,
+    y: x * s + y * c,
+    z,
   };
 }
 
@@ -65,6 +79,7 @@ export class Simulation {
   private ascent: AscentState | null = null;
   private ctx: AscentContext | null = null;
   private incRad = 0;
+  private lonRad = 0;
 
   // Coast/orbit state (closed-form propagation).
   private elements: OrbitalElements | null = null;
@@ -101,6 +116,8 @@ export class Simulation {
 
     const lat = cfg.site.latDeg * DEG;
     this.incRad = Math.abs(lat); // due-east launch: inclination = |latitude|
+    // The lifted pad point sits at lon 90°; rotate it onto the real site.
+    this.lonRad = (cfg.site.lonDeg - 90) * DEG;
     const atmFactor = Math.cos(lat);
 
     const r0: Vec2 = { x: 0, y: R_EARTH };
@@ -135,19 +152,25 @@ export class Simulation {
     this.emit('LIFTOFF');
   }
 
-  /** Player-triggered circularization burn (valid in coast phase near apoapsis). */
+  /** Player-triggered circularization burn (cheapest at apoapsis). */
   circularize(): void {
     if (this.phase !== 'coast' || !this.elements || !this.cfg) return;
     // Propagate to *now* — the burn happens where the vehicle actually is,
     // not where it was at SECO.
     const elNow = propagateElements(this.elements, this.t - this.elementsSetAtT);
-    const dvNeed = circularizationDeltaV(elNow);
+    const { r, v } = elementsToState(elNow);
+    // Vector burn to the local circular velocity — safe anywhere on the orbit.
+    const { dv: dvVec, mag: dvNeed } = circularizeHereDeltaV(r, v);
     const stage = this.cfg.design.stages[this.cfg.design.stages.length - 1];
     const dvAvail = availableDeltaV(stage.engine.ispVac, this.orbitMass, this.orbitProp);
     const dv = Math.min(dvNeed, dvAvail);
 
-    const { r, v } = elementsToState(elNow);
-    const vNew = applyPrograde(v, dv);
+    const frac = dvNeed > 0 ? dv / dvNeed : 0;
+    const vNew = {
+      x: v.x + dvVec.x * frac,
+      y: v.y + dvVec.y * frac,
+      z: v.z + dvVec.z * frac,
+    };
     const propUsed = propForDeltaV(stage.engine.ispVac, this.orbitMass, dv);
     this.orbitMass -= propUsed;
     this.orbitProp = Math.max(0, this.orbitProp - propUsed);
@@ -311,11 +334,26 @@ export class Simulation {
 
   private stepOrbit(_dt: number): void {
     if (!this.elements) return;
-    // Position is evaluated lazily in snapshot() via closed-form propagation;
-    // here we only fire the apoapsis event when we pass it.
     const dtSince = this.t - this.elementsSetAtT;
-    const tta = timeToApoapsis(this.elements);
-    if (this.phase === 'coast' && dtSince > 0 && tta < 2 && !this.recentlyFlagged('APOAPSIS', 30)) {
+    const elNow = propagateElements(this.elements, dtSince);
+
+    // Reentry check: a coasting "orbit" that DESCENDS into the atmosphere ends
+    // there — no Keplering through the planet. (Climbing out through 90 km
+    // right after a low SECO is fine.)
+    const { r, v } = elementsToState(elNow);
+    const descending = r.x * v.x + r.y * v.y + r.z * v.z < 0;
+    if (descending && mag3(r) < R_EARTH + 90e3) {
+      this.emit('REENTRY');
+      this.phase = 'failed';
+      this.finish('suborbital');
+      return;
+    }
+
+    if (
+      this.phase === 'coast' &&
+      timeToApoapsis(elNow) < 2 &&
+      !this.recentlyFlagged('APOAPSIS', 30)
+    ) {
       this.emit('APOAPSIS');
     }
   }
@@ -323,8 +361,8 @@ export class Simulation {
   /** In-plane 2D ascent state → 3D orbital elements via the launch-plane lift. */
   private currentElementsFromAscent(): OrbitalElements {
     const s = this.ascent!;
-    const r3 = liftTo3D(s.r, this.incRad);
-    const v3 = liftTo3D(s.v, this.incRad);
+    const r3 = liftTo3D(s.r, this.incRad, this.lonRad);
+    const v3 = liftTo3D(s.v, this.incRad, this.lonRad);
     return stateToElements(r3, v3);
   }
 
@@ -385,8 +423,8 @@ export class Simulation {
     const der = computeDerived(s, ctx);
     const angle = Math.atan2(s.r.y, s.r.x);
     const downrange = Math.abs(angle - this.downrangeAngle0) * R_EARTH;
-    const rEci = liftTo3D(s.r, this.incRad);
-    const vEci = liftTo3D(s.v, this.incRad);
+    const rEci = liftTo3D(s.r, this.incRad, this.lonRad);
+    const vEci = liftTo3D(s.v, this.incRad, this.lonRad);
 
     const stages: StageTelemetry[] = d.stages.map((st, i) => ({
       fuelFrac:
@@ -443,7 +481,7 @@ export class Simulation {
     const lastStage = d.stages[d.stages.length - 1];
     const speed = mag3(v);
     const alt = mag3(r) - R_EARTH;
-    const dvNeed = circularizationDeltaV(el);
+    const dvNeed = circularizeHereDeltaV(r, v).mag;
     const dvAvail = availableDeltaV(lastStage.engine.ispVac, this.orbitMass, this.orbitProp);
 
     const stages: StageTelemetry[] = d.stages.map((st, i) => ({

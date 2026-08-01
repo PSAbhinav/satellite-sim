@@ -109,6 +109,21 @@ export const concepts: Concept[] = [
     related: ['drag', 'staging'],
   },
   {
+    id: 'mission-control',
+    term: 'Mission Control Center',
+    category: 'flight',
+    unlock: 'launch',
+    short: 'The room that flies the rocket after it leaves the pad — one screen per specialist.',
+    levels: {
+      kid: 'A rocket has one pilot on board (sometimes none!) but a whole room of helpers on the ground. Each desk watches one thing — fuel, path, weather — and the big screen up front shows where the rocket is flying over the Earth. The boss is called the Flight Director, and everyone answers "GO!" or "NO-GO!" when asked.',
+      student:
+        'A Mission Control Center is organized by discipline: FIDO tracks the trajectory, BOOSTER watches propulsion, GNC the guidance, SURGEON the crew, while the Flight Director runs the room and CAPCOM is the single voice talking to the vehicle. The front wall shows the ground track on a world map plus mission clocks — the layout this dashboard copies.',
+      engineer:
+        'The classic MOCR/FCR layout: tiered console rows ("the trench" is the front row of trajectory operators), voice loops keyed by discipline, and go/no-go polls at decision gates (launch commit, TLI, deorbit). Modern rooms (SpaceX Hawthorne, JSC FCR-1) keep the same information architecture: role-scoped telemetry consoles + shared situational big board.',
+    },
+    related: ['launch-window'],
+  },
+  {
     id: 'launch-window',
     term: 'Launch window & scrubs',
     category: 'weather',

@@ -2,7 +2,7 @@
 // two fixes: the ShaderMaterial is memoized (was rebuilt every render) and the
 // sun direction is driven by mission time (was Date.now()).
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { telemetryBus } from '@/sim/runtime/telemetryBus';
@@ -19,6 +19,15 @@ export function Earth({ radius = 1 }: { radius?: number }) {
 
   const earthRef = useRef<THREE.Mesh>(null);
   const cloudsRef = useRef<THREE.Mesh>(null);
+
+  // Sharp at oblique angles and correct color: anisotropy + sRGB decode.
+  useEffect(() => {
+    for (const t of [dayMap, nightMap, cloudMap]) {
+      t.anisotropy = 8;
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.needsUpdate = true;
+    }
+  }, [dayMap, nightMap, cloudMap]);
 
   const shaderMaterial = useMemo(
     () =>

@@ -17,13 +17,18 @@ export function ProceduralRocket3D({ design }: { design: RocketDesign }) {
   useFrame(() => {
     const snap = telemetryBus.get();
     if (!snap) return;
-    // Flame length breathes with thrust; hidden when engines are off.
+    // Flame length breathes with thrust and rides at the bottom of whichever
+    // stage is currently burning.
     if (plumeRef.current) {
       const on = snap.thrust > 0;
       plumeRef.current.visible = on;
       if (on) {
         const len = 1.2 + (snap.thrust / 8e6) * 2.5 + Math.random() * 0.25;
         plumeRef.current.scale.set(1, len, 1);
+        let bottom = 0;
+        for (let i = 0; i < snap.activeStage && i < stageHeights.length; i++)
+          bottom += stageHeights[i];
+        plumeRef.current.position.y = bottom - 0.9 * len * 0.5 - 0.35;
       }
     }
     // Hide spent stages as they separate.

@@ -1,6 +1,7 @@
-// Preset parts catalog. Numbers are loosely modeled on real hardware
-// (Merlin/MVac/Rutherford/kick-stage class) so budgets read plausibly,
-// but names are our own — this is not any specific vehicle.
+// Real flight hardware, real names, published (approximate) specs.
+// Thrust in N, Isp in s, masses in kg. Where a figure is not officially
+// published (e.g. BE-4), values are widely-cited estimates — the blurbs say so.
+// Adding a part = adding one entry here; the VAB picks it up automatically.
 
 import type { EngineSpec } from './engine';
 import type { PayloadSpec } from './payload';
@@ -8,78 +9,274 @@ import type { Fairing, RocketDesign, StageSpec } from './rocket';
 import { Q_MAX_DEFAULT } from '../constants';
 
 export const ENGINES: Record<string, EngineSpec> = {
-  'pyxis-sl': {
-    id: 'pyxis-sl',
-    name: 'Pyxis-1 (sea-level)',
+  'merlin-1d': {
+    id: 'merlin-1d',
+    name: 'Merlin 1D',
     thrustSL: 845e3,
     thrustVac: 914e3,
     ispSL: 283,
     ispVac: 311,
-    blurb: 'Workhorse booster engine. Strong at sea level where the air pushes back.',
+    blurb: 'SpaceX’s kerolox workhorse — nine of them lift every Falcon 9.',
   },
-  'pyxis-vac': {
-    id: 'pyxis-vac',
-    name: 'Pyxis-V (vacuum)',
+  'merlin-vac': {
+    id: 'merlin-vac',
+    name: 'Merlin Vacuum',
     thrustSL: 0,
     thrustVac: 934e3,
     ispSL: 0,
     ispVac: 348,
-    blurb: 'Big vacuum nozzle. Useless in the atmosphere, superb in space.',
+    blurb: 'Merlin with a huge radiatively-cooled nozzle. Space only.',
   },
-  'ember': {
-    id: 'ember',
-    name: 'Ember (small booster)',
-    thrustSL: 24e3,
-    thrustVac: 26e3,
+  'raptor-2': {
+    id: 'raptor-2',
+    name: 'Raptor 2',
+    thrustSL: 2256e3,
+    thrustVac: 2450e3,
+    ispSL: 327,
+    ispVac: 353,
+    blurb: 'Full-flow staged-combustion methalox. 33 of these lift Super Heavy.',
+  },
+  'raptor-vac': {
+    id: 'raptor-vac',
+    name: 'Raptor Vacuum',
+    thrustSL: 0,
+    thrustVac: 2400e3,
+    ispSL: 0,
+    ispVac: 372,
+    blurb: 'Vacuum Raptor for Starship’s upper stage (figures estimated).',
+  },
+  'rs-25': {
+    id: 'rs-25',
+    name: 'RS-25 (SSME)',
+    thrustSL: 1860e3,
+    thrustVac: 2279e3,
+    ispSL: 366,
+    ispVac: 452,
+    blurb: 'The Space Shuttle Main Engine — hydrolox, astonishing efficiency, now on SLS.',
+  },
+  'f-1': {
+    id: 'f-1',
+    name: 'F-1',
+    thrustSL: 6770e3,
+    thrustVac: 7770e3,
+    ispSL: 263,
+    ispVac: 304,
+    blurb: 'The Saturn V monster — still the most powerful single-chamber engine ever flown.',
+  },
+  'j-2': {
+    id: 'j-2',
+    name: 'J-2',
+    thrustSL: 0,
+    thrustVac: 1033e3,
+    ispSL: 0,
+    ispVac: 421,
+    blurb: 'Hydrolox upper-stage engine that pushed Apollo toward the Moon.',
+  },
+  'rd-180': {
+    id: 'rd-180',
+    name: 'RD-180',
+    thrustSL: 3830e3,
+    thrustVac: 4150e3,
+    ispSL: 311,
+    ispVac: 338,
+    blurb: 'Russian twin-chamber kerolox masterpiece that powered Atlas V.',
+  },
+  'rd-191': {
+    id: 'rd-191',
+    name: 'RD-191',
+    thrustSL: 1920e3,
+    thrustVac: 2090e3,
+    ispSL: 311,
+    ispVac: 337,
+    blurb: 'Single-chamber descendant of the RD-170 family, flies on Angara.',
+  },
+  'nk-33': {
+    id: 'nk-33',
+    name: 'NK-33',
+    thrustSL: 1510e3,
+    thrustVac: 1638e3,
+    ispSL: 297,
+    ispVac: 331,
+    blurb: 'Built for the Soviet N1 Moon rocket; decades later it flew again on Antares.',
+  },
+  'rs-68a': {
+    id: 'rs-68a',
+    name: 'RS-68A',
+    thrustSL: 3140e3,
+    thrustVac: 3560e3,
+    ispSL: 362,
+    ispVac: 412,
+    blurb: 'The largest hydrolox engine ever flown — Delta IV’s big orange flame.',
+  },
+  'be-4': {
+    id: 'be-4',
+    name: 'BE-4',
+    thrustSL: 2400e3,
+    thrustVac: 2600e3,
+    ispSL: 310,
+    ispVac: 340,
+    blurb: 'Blue Origin methalox; powers Vulcan and New Glenn (figures estimated).',
+  },
+  'vulcain-2': {
+    id: 'vulcain-2',
+    name: 'Vulcain 2',
+    thrustSL: 935e3,
+    thrustVac: 1390e3,
+    ispSL: 318,
+    ispVac: 431,
+    blurb: 'Ariane 5’s hydrolox core engine — needs solid boosters to leave the pad.',
+  },
+  'hm7b': {
+    id: 'hm7b',
+    name: 'HM7B',
+    thrustSL: 0,
+    thrustVac: 62.7e3,
+    ispSL: 0,
+    ispVac: 446,
+    blurb: 'Small, veteran hydrolox upper-stage engine of the Ariane family.',
+  },
+  vikas: {
+    id: 'vikas',
+    name: 'Vikas',
+    thrustSL: 725e3,
+    thrustVac: 800e3,
+    ispSL: 262,
+    ispVac: 293,
+    blurb: 'ISRO’s hypergolic workhorse — the muscle of PSLV and GSLV.',
+  },
+  'ce-20': {
+    id: 'ce-20',
+    name: 'CE-20',
+    thrustSL: 0,
+    thrustVac: 200e3,
+    ispSL: 0,
+    ispVac: 443,
+    blurb: 'India’s cryogenic upper-stage engine — flew Chandrayaan-3 on LVM3.',
+  },
+  s139: {
+    id: 's139',
+    name: 'S139 solid motor',
+    thrustSL: 4800e3,
+    thrustVac: 5000e3,
+    ispSL: 237,
+    ispVac: 269,
+    blurb: 'PSLV’s big solid first stage. Once lit, there is no off switch.',
+  },
+  'srb-shuttle': {
+    id: 'srb-shuttle',
+    name: 'Shuttle SRB',
+    thrustSL: 12500e3,
+    thrustVac: 13800e3,
+    ispSL: 242,
+    ispVac: 268,
+    blurb: 'The Space Shuttle’s solid boosters — the most powerful motors ever flown.',
+  },
+  'yf-100': {
+    id: 'yf-100',
+    name: 'YF-100',
+    thrustSL: 1200e3,
+    thrustVac: 1340e3,
+    ispSL: 300,
+    ispVac: 335,
+    blurb: 'China’s staged-combustion kerolox engine, core of the Long March family.',
+  },
+  rutherford: {
+    id: 'rutherford',
+    name: 'Rutherford',
+    thrustSL: 24.9e3,
+    thrustVac: 25.8e3,
     ispSL: 280,
     ispVac: 311,
-    blurb: 'Tiny 3D-printed engine for light rockets.',
+    blurb: 'Rocket Lab’s 3D-printed, battery-pumped engine — nine per Electron.',
   },
-  'spark-kick': {
-    id: 'spark-kick',
-    name: 'Spark (kick stage)',
+  'rutherford-vac': {
+    id: 'rutherford-vac',
+    name: 'Rutherford Vacuum',
+    thrustSL: 0,
+    thrustVac: 25.8e3,
+    ispSL: 0,
+    ispVac: 343,
+    blurb: 'The vacuum-nozzle Rutherford on Electron’s second stage.',
+  },
+  kestrel: {
+    id: 'kestrel',
+    name: 'Kestrel',
+    thrustSL: 0,
+    thrustVac: 31e3,
+    ispSL: 0,
+    ispVac: 317,
+    blurb: 'Falcon 1’s tiny pressure-fed upper-stage engine — where SpaceX began.',
+  },
+  'rl10b-2': {
+    id: 'rl10b-2',
+    name: 'RL10B-2',
+    thrustSL: 0,
+    thrustVac: 110e3,
+    ispSL: 0,
+    ispVac: 466,
+    blurb: 'The most efficient chemical engine in service — hydrolox perfection since 1963.',
+  },
+  'star-48b': {
+    id: 'star-48b',
+    name: 'Star 48B',
     thrustSL: 0,
     thrustVac: 66e3,
     ispSL: 0,
-    ispVac: 285,
-    blurb: 'One small push to round out an orbit.',
+    ispVac: 286,
+    blurb: 'Solid kick motor — it threw New Horizons at Pluto.',
   },
 };
 
-export const STAGE_PRESETS: Record<string, StageSpec> = {
-  'booster-9': {
-    id: 'booster-9',
-    name: 'Falcon-class Booster (9× Pyxis-1)',
-    engine: ENGINES['pyxis-sl'],
-    engineCount: 9,
-    dryMass: 25_600,
-    propMass: 411_000,
-  },
-  'upper-v': {
-    id: 'upper-v',
-    name: 'Vacuum Upper Stage (1× Pyxis-V)',
-    engine: ENGINES['pyxis-vac'],
-    engineCount: 1,
-    dryMass: 4_000,
-    propMass: 107_500,
-  },
-  'light-booster': {
-    id: 'light-booster',
-    name: 'Light Booster (9× Ember)',
-    engine: ENGINES['ember'],
-    engineCount: 9,
-    dryMass: 950,
-    propMass: 9_250,
-  },
-  'kick': {
-    id: 'kick',
-    name: 'Kick Stage (1× Spark)',
-    engine: ENGINES['spark-kick'],
-    engineCount: 1,
-    dryMass: 350,
-    propMass: 2_000,
-  },
-};
+const B = (
+  id: string,
+  name: string,
+  engine: string,
+  engineCount: number,
+  dryT: number,
+  propT: number,
+  heritage: string,
+): StageSpec => ({
+  id,
+  name,
+  engine: ENGINES[engine],
+  engineCount,
+  dryMass: dryT * 1000,
+  propMass: propT * 1000,
+  heritage,
+});
+
+export const STAGE_PRESETS: Record<string, StageSpec> = Object.fromEntries(
+  [
+    // ── Boosters / first stages ──
+    B('falcon9-s1', 'Falcon 9 first stage', 'merlin-1d', 9, 25.6, 411, 'SpaceX Falcon 9'),
+    B('superheavy', 'Super Heavy', 'raptor-2', 33, 200, 3400, 'SpaceX Starship'),
+    B('saturn-v-s1c', 'Saturn V S-IC', 'f-1', 5, 130, 2160, 'Apollo / Saturn V'),
+    B('atlas-v-ccb', 'Atlas V core (CCB)', 'rd-180', 1, 21.1, 284, 'ULA Atlas V'),
+    B('delta4-cbc', 'Delta IV core (CBC)', 'rs-68a', 1, 26.4, 204, 'ULA Delta IV'),
+    B('ariane5-epc', 'Ariane 5 core (EPC)', 'vulcain-2', 1, 14.7, 170, 'Ariane 5'),
+    B('sls-core', 'SLS core stage', 'rs-25', 4, 85.3, 987, 'NASA SLS / Artemis'),
+    B('pslv-s139', 'PSLV first stage (S139)', 's139', 1, 30, 138, 'ISRO PSLV'),
+    B('angara-urm1', 'Angara URM-1', 'rd-191', 1, 10.6, 128, 'Angara A5'),
+    B('antares-s1', 'Antares first stage', 'nk-33', 2, 18.6, 242, 'Antares 100'),
+    B('new-glenn-s1', 'New Glenn first stage', 'be-4', 7, 100, 1050, 'Blue Origin New Glenn'),
+    B('lm5-core', 'Long March 5 booster', 'yf-100', 2, 12, 135, 'CZ-5'),
+    B('electron-s1', 'Electron first stage', 'rutherford', 9, 0.95, 9.25, 'Rocket Lab Electron'),
+    B('shuttle-srb', 'Shuttle SRB', 'srb-shuttle', 1, 91, 500, 'Space Shuttle / SLS'),
+    // ── Upper stages ──
+    B('falcon9-s2', 'Falcon 9 second stage', 'merlin-vac', 1, 4.0, 107.5, 'SpaceX Falcon 9'),
+    B('starship-ship', 'Starship (ship)', 'raptor-vac', 3, 100, 1200, 'SpaceX Starship'),
+    B('saturn-v-s2', 'Saturn V S-II', 'j-2', 5, 40, 456, 'Apollo / Saturn V'),
+    B('saturn-v-s4b', 'Saturn V S-IVB', 'j-2', 1, 13.5, 109.5, 'Apollo / Saturn V'),
+    B('centaur-iii', 'Centaur III', 'rl10b-2', 1, 2.3, 20.8, 'Atlas V'),
+    B('dcss-5m', 'Delta Cryogenic Second Stage', 'rl10b-2', 1, 3.5, 27.2, 'Delta IV'),
+    B('ariane5-esca', 'Ariane 5 ESC-A', 'hm7b', 1, 4.5, 14.9, 'Ariane 5 ECA'),
+    B('pslv-ps2', 'PSLV second stage (Vikas)', 'vikas', 1, 5.3, 42, 'ISRO PSLV'),
+    B('lvm3-c25', 'LVM3 cryo stage (C25)', 'ce-20', 1, 5.0, 28, 'ISRO LVM3 / Chandrayaan-3'),
+    B('electron-s2', 'Electron second stage', 'rutherford-vac', 1, 0.25, 2.05, 'Rocket Lab Electron'),
+    B('falcon1-s2', 'Falcon 1 second stage', 'kestrel', 1, 0.36, 3.38, 'SpaceX Falcon 1'),
+    B('star48-kick', 'Star 48B kick stage', 'star-48b', 1, 0.13, 2.01, 'PAM-D / New Horizons'),
+  ].map((s) => [s.id, s]),
+);
 
 export const PAYLOADS: Record<string, PayloadSpec> = {
   'cubesat-3u': {
@@ -114,10 +311,10 @@ export const FAIRING_STD: Fairing = {
   jettisonAltitude: 110e3,
 };
 
-/** Default winnable stack: booster + vacuum upper + imaging sat. */
+/** Default winnable stack: Falcon 9 + imaging sat. */
 export function defaultDesign(): RocketDesign {
   return {
-    stages: [STAGE_PRESETS['booster-9'], STAGE_PRESETS['upper-v']],
+    stages: [STAGE_PRESETS['falcon9-s1'], STAGE_PRESETS['falcon9-s2']],
     payload: PAYLOADS['imaging-150'],
     fairing: FAIRING_STD,
     refArea: 10.8, // ~3.7 m diameter core

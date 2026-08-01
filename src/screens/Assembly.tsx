@@ -59,9 +59,14 @@ export default function Assembly() {
                   slot === 0 ? p.engine.thrustSL > 0 : p.engine.thrustVac > 0,
                 )
                 .map((p) => (
-                  <button
+                  <div
                     key={p.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setStage(slot, p.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') setStage(slot, p.id);
+                    }}
                     className={`w-full rounded-panel border p-2 text-left text-sm transition-colors cursor-pointer ${
                       stage.id === p.id
                         ? 'border-phosphor/60 bg-console-2'
@@ -80,7 +85,12 @@ export default function Assembly() {
                       <span>{p.engineCount}× engine</span>
                     </div>
                     <p className="mt-1 text-[11px] text-muted-star/80">{p.engine.blurb}</p>
-                  </button>
+                    {p.heritage && (
+                      <p className="mt-0.5 font-display text-[10px] uppercase tracking-wider text-ion/80">
+                        {p.heritage}
+                      </p>
+                    )}
+                  </div>
                 ))}
             </CardContent>
           </Card>

@@ -29,7 +29,14 @@ class SimController {
   /** Advance by real frame seconds; publishes to the bus. Returns drained events. */
   tick(realDt: number) {
     if (!this.running) return [];
-    this.clock.advance(realDt, this.warp, (dt) => this.sim.step(dt));
+    // Auto-brake the warp near apoapsis so the player can't skip the burn
+    // window at 1000× (the orbit would coast on around into reentry).
+    let warp = this.warp;
+    const tta = telemetryBus.get()?.orbit?.timeToApoapsisS;
+    if (this.sim.phase === 'coast' && tta !== undefined && tta > 0.5 && tta < warp * 2) {
+      warp = Math.max(1, tta / 2);
+    }
+    this.clock.advance(realDt, warp, (dt) => this.sim.step(dt));
     const snap = this.sim.snapshot();
     telemetryBus.publish(snap);
     const events = this.sim.drainEvents();

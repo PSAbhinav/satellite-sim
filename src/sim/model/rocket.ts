@@ -13,6 +13,8 @@ export interface StageSpec {
   dryMass: number;
   /** Usable propellant, kg. */
   propMass: number;
+  /** Real vehicle this stage flies on (educational metadata). */
+  heritage?: string;
 }
 
 export interface Fairing {

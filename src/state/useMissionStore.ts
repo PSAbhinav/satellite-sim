@@ -96,7 +96,22 @@ export const useMissionStore = create<MissionState>()(
     }),
     {
       name: 'satsim.mission',
-      version: 1,
+      version: 2,
+      // v2 replaced the fictional parts catalog with real hardware — old saved
+      // designs reference retired presets, so reset the vehicle (keep unlocks).
+      migrate: (persisted, version) => {
+        const p = (persisted ?? {}) as Record<string, unknown>;
+        const base = {
+          design: defaultDesign(),
+          payloadId: 'imaging-150',
+          siteId: (p.siteId as string) ?? 'cape',
+          weatherDay: (p.weatherDay as number) ?? 0,
+          unlockedPedia: (p.unlockedPedia as string[]) ?? [],
+          completedMissions: (p.completedMissions as string[]) ?? [],
+        };
+        if (version < 2) return base;
+        return { ...base, design: (p.design as RocketDesign) ?? base.design, payloadId: (p.payloadId as string) ?? base.payloadId };
+      },
       // Only campaign progress persists; live flight state is per-session.
       partialize: (s) => ({
         design: s.design,

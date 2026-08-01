@@ -37,8 +37,8 @@ export function StripChart({
 
     const opts: uPlot.Options = {
       width: host.clientWidth,
-      height: 130,
-      padding: [8, 8, 0, 0],
+      height: 108,
+      padding: [8, 14, 0, 0],
       cursor: { y: false, points: { size: 6 } },
       legend: { show: false },
       scales: { x: { time: false } },
@@ -92,7 +92,7 @@ export function StripChart({
     };
     raf = requestAnimationFrame(tick);
 
-    const onResize = () => plot.setSize({ width: host.clientWidth, height: 130 });
+    const onResize = () => plot.setSize({ width: host.clientWidth, height: 108 });
     const ro = new ResizeObserver(onResize);
     ro.observe(host);
 

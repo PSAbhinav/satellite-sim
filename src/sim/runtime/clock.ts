@@ -9,7 +9,7 @@ export class SimClock {
   /** Hard cap on physics steps per frame at high warp. */
   readonly maxStepsPerFrame: number;
 
-  constructor(fixedDt = 0.02, maxFrame = 0.25, maxStepsPerFrame = 400) {
+  constructor(fixedDt = 0.02, maxFrame = 1.0, maxStepsPerFrame = 400) {
     this.fixedDt = fixedDt;
     this.maxFrame = maxFrame;
     this.maxStepsPerFrame = maxStepsPerFrame;

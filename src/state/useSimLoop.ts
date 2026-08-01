@@ -15,6 +15,7 @@ export function useSimLoop(active: boolean): void {
     let raf = 0;
     let last = performance.now();
     let lastPhase = simController.sim.phase;
+    setFlightPhase(lastPhase); // sync the store even if no transition happens
 
     const frame = (now: number) => {
       const realDt = (now - last) / 1000;

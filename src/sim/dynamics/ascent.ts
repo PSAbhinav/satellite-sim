@@ -3,7 +3,7 @@
 // terminal (r, v) is directly a valid two-body state for the orbit layer.
 
 import type { Vec2 } from '../math/vec2';
-import { add2, mag2, scale2 } from '../math/vec2';
+import { add2, mag2, scale2, sub2 } from '../math/vec2';
 import { G0, R_EARTH } from '../constants';
 import { gravityAccel } from '../env/gravity';
 import { speedOfSound } from '../env/atmosphere';
@@ -11,7 +11,7 @@ import { massFlow } from '../model/engine';
 import type { RocketDesign } from '../model/rocket';
 import { massAboveStage, thrustAt } from '../model/rocket';
 import type { DragContext } from './drag';
-import { dragForce } from './drag';
+import { atmosphereVelocity, dragForce } from './drag';
 import type { PitchProgram } from './steering';
 import { thrustDirection } from './steering';
 
@@ -75,7 +75,9 @@ function accelAt(
   let thrust = 0;
   if (stage && s.engineOn && prop > 0 && s.throttle > 0) {
     thrust = thrustAt(stage, s.throttle, alt);
-    const dir = thrustDirection(r, v, alt, ctx.drag.downrangeSign, ctx.prog);
+    // Steer along the AIR-relative velocity (zero angle of attack).
+    const vRel = sub2(v, atmosphereVelocity(r, ctx.drag.downrangeSign, ctx.drag.atmFactor));
+    const dir = thrustDirection(r, vRel, alt, ctx.drag.downrangeSign, ctx.prog);
     aThrust = scale2(dir, thrust / mass);
   }
 

@@ -21,7 +21,7 @@ describe('Tsiolkovsky', () => {
         {
           id: 't',
           name: 't',
-          engine: { ...ENGINES['pyxis-sl'], ispVac: isp },
+          engine: { ...ENGINES['merlin-1d'], ispVac: isp },
           engineCount: 1,
           dryMass: dry,
           propMass: prop,
@@ -68,7 +68,7 @@ describe('default catalog stack', () => {
   });
 
   it('mass flow × burn time returns the propellant load', () => {
-    const s = STAGE_PRESETS['booster-9'];
+    const s = STAGE_PRESETS['falcon9-s1'];
     const t = stageBurnTime(s);
     expect(massFlow(s.engine) * s.engineCount * t).toBeCloseTo(s.propMass, 6);
   });

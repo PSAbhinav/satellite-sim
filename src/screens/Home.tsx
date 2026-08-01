@@ -10,7 +10,6 @@ import { startMusic } from '@/lib/audio';
 
 export default function Home() {
   const completed = useMissionStore((s) => s.completedMissions);
-  const unlocked = useMissionStore((s) => s.unlockedPedia);
   const musicOn = useUiStore((s) => s.musicOn);
   const musicVolume = useUiStore((s) => s.musicVolume);
 
@@ -56,7 +55,7 @@ export default function Home() {
           <Button asChild variant="secondary" size="lg" onClick={armAudio}>
             <Link to="/spacepedia">
               <BookOpen className="size-4" />
-              Spacepedia ({unlocked.length + 4} entries)
+              Spacepedia
             </Link>
           </Button>
         </div>

@@ -111,6 +111,23 @@ h3,
   outline-offset: 2px;
 }
 
+/* Thin console scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #223050 transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #223050;
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

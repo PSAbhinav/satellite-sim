@@ -108,6 +108,64 @@ export function setMusicVolume(v: number): void {
   if (ctx && musicGain) musicGain.gain.linearRampToValueAtTime(v, ctx.currentTime + 0.3);
 }
 
+// ── Rocket rumble: looped brown noise through a lowpass — the classic
+// synthesized launch roar. Intensity follows engine thrust.
+
+let rumbleGain: GainNode | null = null;
+let rumbleSrc: AudioBufferSourceNode | null = null;
+
+export function setRumble(intensity: number): void {
+  const ac = ensureContext();
+  if (intensity <= 0) {
+    if (rumbleGain) rumbleGain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.4);
+    return;
+  }
+  if (!rumbleGain) {
+    // 2 s of brown noise, looped.
+    const len = ac.sampleRate * 2;
+    const buf = ac.createBuffer(1, len, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    let lastOut = 0;
+    for (let i = 0; i < len; i++) {
+      const white = Math.random() * 2 - 1;
+      lastOut = (lastOut + 0.02 * white) / 1.02;
+      data[i] = lastOut * 3.5;
+    }
+    rumbleSrc = ac.createBufferSource();
+    rumbleSrc.buffer = buf;
+    rumbleSrc.loop = true;
+    const filter = ac.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 140;
+    filter.Q.value = 0.5;
+    rumbleGain = ac.createGain();
+    rumbleGain.gain.value = 0;
+    rumbleSrc.connect(filter).connect(rumbleGain).connect(ac.destination);
+    rumbleSrc.start();
+  }
+  rumbleGain.gain.linearRampToValueAtTime(
+    Math.min(0.35, intensity * 0.35),
+    ac.currentTime + 0.2,
+  );
+}
+
+export function stopRumble(): void {
+  if (!ctx || !rumbleGain) return;
+  rumbleGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
+  const src = rumbleSrc;
+  const gain = rumbleGain;
+  rumbleSrc = null;
+  rumbleGain = null;
+  window.setTimeout(() => {
+    try {
+      src?.stop();
+    } catch {
+      /* already stopped */
+    }
+    gain.disconnect();
+  }, 1_200);
+}
+
 /** Short console beep — countdown ticks, button feedback. */
 export function beep(freq = 880, durationMs = 90, volume = 0.12): void {
   const ac = ensureContext();

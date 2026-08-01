@@ -41,7 +41,16 @@ export default function PayloadBay() {
           const margin =
             totalDeltaV(trial) - requiredDeltaV(p.target.altitude, siteRotationBonus(site));
           return (
-            <button key={p.id} onClick={() => setPayload(p.id)} className="text-left cursor-pointer">
+            <div
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setPayload(p.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') setPayload(p.id);
+              }}
+              className="text-left cursor-pointer"
+            >
               <Card
                 className={`h-full transition-colors ${
                   selected ? 'border-phosphor/60 bg-console-2' : 'hover:border-muted-star/50'
@@ -79,7 +88,7 @@ export default function PayloadBay() {
                   </div>
                 </CardContent>
               </Card>
-            </button>
+            </div>
           );
         })}
       </div>

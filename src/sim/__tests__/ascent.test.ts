@@ -7,7 +7,6 @@ import { evaluateLaunchCommit } from '../env/launchCommit';
 import { SITES } from '../env/sites';
 import { defaultDesign, PAYLOADS } from '../model/catalog';
 import { Simulation } from '../runtime/simulation';
-import { SimClock } from '../runtime/clock';
 
 const runToEnd = (sim: Simulation, maxT = 1200): void => {
   sim.ignite();
@@ -69,11 +68,12 @@ describe('full ascent (default stack, Cape, 550 km target)', () => {
     runToEnd(sim);
     expect(sim.phase).toBe('coast');
 
-    // Warp to apoapsis, then burn.
-    const clock = new SimClock();
+    // Warp to apoapsis with tta-aware steps (big jumps far out, fine near it).
     let guard = 0;
-    while (sim.snapshot().orbit!.timeToApoapsisS > 5 && guard++ < 10_000) {
-      clock.advance(0.1, 100, (dt) => sim.step(dt));
+    while (sim.phase === 'coast' && guard++ < 100_000) {
+      const tta = sim.snapshot().orbit!.timeToApoapsisS;
+      if (tta <= 5) break;
+      sim.step(Math.max(0.02, Math.min(10, tta - 3)));
     }
     sim.circularize();
     expect(sim.phase).toBe('orbit');
@@ -117,7 +117,7 @@ describe('failure modes', () => {
     // orbital requirements while TWR stays sane (heavier = gentler max-Q).
     const overloaded = {
       ...d,
-      payload: { ...d.payload, mass: 40_000 },
+      payload: { ...d.payload, mass: 70_000 },
     };
     const sim = new Simulation();
     sim.configure({ design: overloaded, site: SITES.cape, targetAltitude: 550e3 });
