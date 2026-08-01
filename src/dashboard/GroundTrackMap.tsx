@@ -2,15 +2,59 @@
 // control room since Mercury: an equirectangular Earth with the vehicle's
 // ground track tracing across it. Canvas-drawn from the telemetry bus.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { telemetryBus } from '@/sim/runtime/telemetryBus';
+import { DEG, MU_EARTH, OMEGA_EARTH, R_EARTH, RAD } from '@/sim/constants';
 
 const BASE = import.meta.env.BASE_URL;
 
-export function GroundTrackMap({ siteLat, siteLon }: { siteLat?: number; siteLon?: number }) {
+/**
+ * Nominal ground track for the target circular orbit (inclination = site
+ * latitude, due-east launch): one revolution starting at the site, with the
+ * classic westward drift from Earth's rotation. This is the planned line a
+ * real MCC board shows before liftoff.
+ */
+function plannedTrack(
+  siteLat: number,
+  siteLon: number,
+  targetAlt: number,
+): { lat: number; lon: number }[] {
+  const inc = Math.abs(siteLat) * DEG;
+  const n = Math.sqrt(MU_EARTH / Math.pow(R_EARTH + targetAlt, 3)); // mean motion
+  const pts: { lat: number; lon: number }[] = [];
+  const th0 = Math.PI / 2; // site sits at the track's northernmost point
+  const lonAt = (th: number) => Math.atan2(Math.cos(inc) * Math.sin(th), Math.cos(th));
+  for (let k = 0; k <= 240; k++) {
+    const th = th0 + (k / 240) * Math.PI * 2;
+    const lat = Math.asin(Math.sin(inc) * Math.sin(th)) * RAD;
+    const lonEci = (lonAt(th) - lonAt(th0)) * RAD;
+    const drift = ((OMEGA_EARTH * (th - th0)) / n) * RAD;
+    let lon = siteLon + lonEci - drift;
+    lon = ((lon + 540) % 360) - 180;
+    pts.push({ lat, lon });
+  }
+  return pts;
+}
+
+export function GroundTrackMap({
+  siteLat,
+  siteLon,
+  targetAltitude,
+}: {
+  siteLat?: number;
+  siteLon?: number;
+  targetAltitude?: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const trace = useRef<{ lat: number; lon: number }[]>([]);
   const lastSample = useRef(-10);
+  const planned = useMemo(
+    () =>
+      siteLat !== undefined && siteLon !== undefined && targetAltitude
+        ? plannedTrack(siteLat, siteLon, targetAltitude)
+        : null,
+    [siteLat, siteLon, targetAltitude],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -86,6 +130,24 @@ export function GroundTrackMap({ siteLat, siteLon }: { siteLat?: number; siteLon
         if (trace.current.length > 2000) trace.current.shift();
       }
 
+      // Planned trajectory — dashed amber, drawn before liftoff like the
+      // nominal track on a real MCC board.
+      if (planned) {
+        ctx.strokeStyle = 'rgba(245, 165, 36, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([7, 7]);
+        ctx.beginPath();
+        let prevP: { lat: number; lon: number } | null = null;
+        for (const p of planned) {
+          const [x, y] = xy(p.lat, p.lon, W, H);
+          if (prevP && Math.abs(p.lon - prevP.lon) < 180) ctx.lineTo(x, y);
+          else ctx.moveTo(x, y);
+          prevP = p;
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
       // Launch site marker.
       if (siteLat !== undefined && siteLon !== undefined) {
         const [sx, sy] = xy(siteLat, siteLon, W, H);
@@ -129,7 +191,7 @@ export function GroundTrackMap({ siteLat, siteLon }: { siteLat?: number; siteLon
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [siteLat, siteLon]);
+  }, [siteLat, siteLon, planned]);
 
   return <canvas ref={canvasRef} className="h-full w-full" />;
 }

@@ -18,6 +18,7 @@ export function StripChart({
   color,
   scale = 1,
   windowS = 120,
+  height = 108,
 }: {
   metric: 'altitude' | 'speed' | 'accelG' | 'q';
   label: string;
@@ -26,6 +27,7 @@ export function StripChart({
   /** Display divisor (e.g. 1000 for km). */
   scale?: number;
   windowS?: number;
+  height?: number;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const valueRef = useRef<HTMLSpanElement>(null);
@@ -37,7 +39,7 @@ export function StripChart({
 
     const opts: uPlot.Options = {
       width: host.clientWidth,
-      height: 108,
+      height,
       padding: [8, 14, 0, 0],
       cursor: { y: false, points: { size: 6 } },
       legend: { show: false },
@@ -92,7 +94,7 @@ export function StripChart({
     };
     raf = requestAnimationFrame(tick);
 
-    const onResize = () => plot.setSize({ width: host.clientWidth, height: 108 });
+    const onResize = () => plot.setSize({ width: host.clientWidth, height });
     const ro = new ResizeObserver(onResize);
     ro.observe(host);
 
@@ -102,7 +104,7 @@ export function StripChart({
       plot.destroy();
       plotRef.current = null;
     };
-  }, [metric, color, scale, windowS]);
+  }, [metric, color, scale, windowS, height]);
 
   return (
     <div className="rounded-panel border border-line bg-console p-2">
