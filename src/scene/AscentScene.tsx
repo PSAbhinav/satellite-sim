@@ -28,6 +28,12 @@ function softDiscTexture(): THREE.CanvasTexture {
   return new THREE.CanvasTexture(c);
 }
 
+/** Height of the launch table the vehicle stands on (engine bells visible under it). */
+export const TABLE_H = 1.4;
+
+const STEEL = { color: '#8d97a3', roughness: 0.55, metalness: 0.5 };
+const CONCRETE = { color: '#7d838c', roughness: 0.95, metalness: 0 };
+
 function LaunchComplex() {
   const puff = useMemo(softDiscTexture, []);
   return (
@@ -37,69 +43,118 @@ function LaunchComplex() {
         <circleGeometry args={[900, 48]} />
         <meshStandardMaterial color="#1d4e73" roughness={0.35} metalness={0.1} />
       </mesh>
-      {/* The cape: sandy island the pad sits on */}
+      {/* The cape: island the complex sits on */}
       <mesh position={[-25, -0.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[95, 48]} />
+        <circleGeometry args={[120, 48]} />
         <meshStandardMaterial color="#4a5c3a" roughness={1} />
       </mesh>
-      <mesh position={[30, -0.31, 10]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[38, 32]} />
-        <meshStandardMaterial color="#8d886a" roughness={1} />
-      </mesh>
 
-      {/* Concrete apron + flame trench */}
+      {/* Concrete apron + crawler road */}
       <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[12, 40]} />
-        <meshStandardMaterial color="#767b82" roughness={0.9} />
+        <circleGeometry args={[26, 48]} />
+        <meshStandardMaterial {...CONCRETE} />
       </mesh>
-      <mesh position={[0, 0.12, 0]}>
-        <cylinderGeometry args={[1.3, 1.7, 0.5, 20]} />
-        <meshStandardMaterial color="#3a4048" roughness={0.8} metalness={0.3} />
+      <mesh position={[-32, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[40, 6]} />
+        <meshStandardMaterial color="#6d737c" roughness={1} />
       </mesh>
 
-      {/* Strongback truss tower */}
-      <group position={[1.9, 0, 0]}>
-        {[[-0.28, -0.28], [0.28, -0.28], [-0.28, 0.28], [0.28, 0.28]].map(([x, z], i) => (
-          <mesh key={i} position={[x, 5.6, z]}>
-            <boxGeometry args={[0.14, 11.2, 0.14]} />
-            <meshStandardMaterial color="#9aa2ad" roughness={0.6} metalness={0.5} />
+      {/* Flame trench: recessed pit + wedge deflector, running east-west */}
+      <mesh position={[0, -0.65, 0]}>
+        <boxGeometry args={[14, 1.3, 4.4]} />
+        <meshStandardMaterial color="#33373d" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, -0.5, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[1.8, 1.8, 4.2]} />
+        <meshStandardMaterial color="#4a4f57" roughness={0.9} />
+      </mesh>
+
+      {/* Elevated launch table: open frame on four hold-down legs */}
+      {[[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]].map(([x, z], i) => (
+        <mesh key={i} position={[x, TABLE_H / 2, z]}>
+          <boxGeometry args={[0.55, TABLE_H, 0.55]} />
+          <meshStandardMaterial {...CONCRETE} />
+        </mesh>
+      ))}
+      <mesh position={[0, TABLE_H - 0.09, 0]}>
+        <boxGeometry args={[4.4, 0.18, 4.4]} />
+        <meshStandardMaterial {...STEEL} />
+      </mesh>
+
+      {/* Fixed service tower with platforms, top crane and red beacon section */}
+      <group position={[3.6, 0, 0]}>
+        {[[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45]].map(([x, z], i) => (
+          <mesh key={i} position={[x, 9, z]}>
+            <boxGeometry args={[0.22, 18, 0.22]} />
+            <meshStandardMaterial {...STEEL} />
           </mesh>
         ))}
-        {[1.4, 2.8, 4.2, 5.6, 7, 8.4, 9.8].map((y) => (
+        {Array.from({ length: 9 }, (_, i) => 2 + i * 1.9).map((y) => (
           <mesh key={y} position={[0, y, 0]}>
-            <boxGeometry args={[0.72, 0.1, 0.72]} />
-            <meshStandardMaterial color="#7e8894" roughness={0.6} metalness={0.5} />
+            <boxGeometry args={[1.2, 0.14, 1.2]} />
+            <meshStandardMaterial {...STEEL} />
           </mesh>
         ))}
-        {/* Crew/service arms toward the vehicle */}
-        {[3.2, 6.4].map((y) => (
-          <mesh key={y} position={[-0.95, y, 0]}>
-            <boxGeometry args={[1.3, 0.14, 0.4]} />
-            <meshStandardMaterial color="#7e8894" roughness={0.6} metalness={0.5} />
+        {[4.5, 8.5, 12.5].map((y) => (
+          <mesh key={y} position={[-1.4, y, 0]}>
+            <boxGeometry args={[1.9, 0.16, 0.5]} />
+            <meshStandardMaterial {...STEEL} />
           </mesh>
         ))}
+        {/* Crane boom + red top */}
+        <mesh position={[0, 18.2, 0]}>
+          <boxGeometry args={[1.1, 0.5, 1.1]} />
+          <meshStandardMaterial color="#b8433a" roughness={0.6} />
+        </mesh>
+        <mesh position={[-1.8, 18.6, 0]} rotation={[0, 0, -0.12]}>
+          <boxGeometry args={[4, 0.22, 0.3]} />
+          <meshStandardMaterial color="#b8433a" roughness={0.6} />
+        </mesh>
       </group>
 
-      {/* Propellant tank farm */}
-      {[[-7, 3], [-8.5, 0.5], [-7, -2.5]].map(([x, z], i) => (
+      {/* Water tower (sound-suppression) — the classic pad landmark */}
+      <group position={[-7, 0, 6]}>
+        <mesh position={[0, 4, 0]}>
+          <cylinderGeometry args={[0.35, 0.35, 8, 12]} />
+          <meshStandardMaterial {...STEEL} />
+        </mesh>
+        <mesh position={[0, 8.8, 0]}>
+          <sphereGeometry args={[1.7, 20, 16]} />
+          <meshStandardMaterial color="#dfe3e8" roughness={0.4} metalness={0.15} />
+        </mesh>
+      </group>
+
+      {/* Propellant tank farm, set back from the pad */}
+      {[[-12, -6], [-14.5, -3.5], [-12, -1]].map(([x, z], i) => (
         <group key={i} position={[x, 0, z]}>
-          <mesh position={[0, 0.9, 0]}>
-            <cylinderGeometry args={[0.7, 0.7, 1.8, 16]} />
+          <mesh position={[0, 1.6, 0]}>
+            <cylinderGeometry args={[1.2, 1.2, 3.2, 18]} />
             <meshStandardMaterial color="#e8e9ea" roughness={0.4} metalness={0.2} />
           </mesh>
-          <mesh position={[0, 1.95, 0]}>
-            <sphereGeometry args={[0.7, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <mesh position={[0, 3.4, 0]}>
+            <sphereGeometry args={[1.2, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
             <meshStandardMaterial color="#e8e9ea" roughness={0.4} metalness={0.2} />
           </mesh>
         </group>
       ))}
+      {/* Bunker */}
+      <mesh position={[10, 0.5, -9]}>
+        <boxGeometry args={[3, 1, 2]} />
+        <meshStandardMaterial {...CONCRETE} />
+      </mesh>
 
-      {/* Lightning masts */}
-      {[[-5.5, 5.5], [6, -5], [5.5, 5.5], [-6, -5]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 5.5, z]}>
-          <cylinderGeometry args={[0.05, 0.12, 11, 6]} />
-          <meshStandardMaterial color="#aab2bc" roughness={0.7} />
-        </mesh>
+      {/* Four tall lightning towers around the pad */}
+      {[[-9, 9], [9, -9], [9, 9], [-9, -9]].map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <mesh position={[0, 8, 0]}>
+            <cylinderGeometry args={[0.09, 0.22, 16, 8]} />
+            <meshStandardMaterial color="#aab2bc" roughness={0.7} />
+          </mesh>
+          <mesh position={[0, 16.2, 0]}>
+            <cylinderGeometry args={[0.02, 0.02, 1.6, 6]} />
+            <meshStandardMaterial color="#d8dce2" roughness={0.5} />
+          </mesh>
+        </group>
       ))}
 
       {/* Distant cumulus */}
@@ -131,9 +186,14 @@ function LiftoffSmoke() {
     group.current.children.forEach((spr, i) => {
       const seed = seeds[i];
       const phase = (t * seed.s + i * 0.53) % 3;
-      const dist = 1.2 + phase * 4.5;
-      spr.position.set(Math.cos(seed.a) * dist, 0.25 + phase * 0.75, Math.sin(seed.a) * dist);
-      const sc = 1.4 + phase * 2.4;
+      // Steam blasts sideways out of both ends of the flame trench.
+      const side = i % 2 === 0 ? 1 : -1;
+      spr.position.set(
+        side * (2.6 + phase * 6),
+        0.3 + phase * 0.9,
+        Math.sin(seed.a) * 1.4,
+      );
+      const sc = 1.6 + phase * 3;
       spr.scale.set(sc, sc, 1);
       (spr as THREE.Sprite).material.opacity = Math.max(0, 0.55 - phase * 0.19);
     });
@@ -227,7 +287,8 @@ function SceneContent({ design, cinematic }: { design: RocketDesign; cinematic?:
         <Starfield count={2200} />
       </group>
 
-      <group ref={rocketRef}>
+      {/* Vehicle stands on the launch table — bells visible above the trench. */}
+      <group ref={rocketRef} position={[0, TABLE_H, 0]}>
         <ProceduralRocket3D design={design} />
       </group>
 
@@ -245,9 +306,9 @@ function SceneContent({ design, cinematic }: { design: RocketDesign; cinematic?:
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ref={controlsRef as any}
         enablePan
-        minDistance={4}
-        maxDistance={60}
-        target={[0, 4, 0]}
+        minDistance={5}
+        maxDistance={90}
+        target={[0, 6, 0]}
         maxPolarAngle={Math.PI / 2 - 0.06}
         autoRotate={cinematic}
         autoRotateSpeed={0.6}
@@ -266,7 +327,7 @@ export function AscentScene({
 }) {
   const lowGraphics = useUiStore((s) => s.lowGraphics);
   return (
-    <SceneCanvas camera={{ position: [11, 5.5, 14], fov: 40, far: 30000 }}>
+    <SceneCanvas camera={{ position: [16, 8, 20], fov: 40, far: 30000 }}>
       <SceneContent design={design} cinematic={cinematic} />
       {/* Bloom makes the exhaust plume and sun actually glow. */}
       {!lowGraphics && (
