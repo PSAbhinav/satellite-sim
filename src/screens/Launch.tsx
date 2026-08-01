@@ -4,7 +4,7 @@
 // running across the bottom.
 
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMissionStore } from '@/state/useMissionStore';
 import { useUiStore } from '@/state/useUiStore';
 import { useSimLoop } from '@/state/useSimLoop';
@@ -19,6 +19,39 @@ import { FuelGauges, LeftRail } from '@/dashboard/Readouts';
 import { GroundTrackMap } from '@/dashboard/GroundTrackMap';
 import { InfoChip } from '@/components/InfoChip';
 import { chime, setRumble, speak, stopRumble } from '@/lib/audio';
+
+function NoActiveMission() {
+  return (
+    <div className="flex h-[calc(100vh-3rem)] items-center justify-center p-6">
+      <div className="max-w-md rounded-panel border border-line bg-console p-8 text-center">
+        <p className="font-display text-xs uppercase tracking-[0.3em] text-muted-star">
+          Mission Control
+        </p>
+        <h1 className="mt-2 font-display text-2xl font-bold text-starlight">
+          No vehicle on the pad
+        </h1>
+        <p className="mt-3 text-sm text-muted-star">
+          This room comes alive during a flight — live telemetry, callouts, the works. Roll a
+          rocket out first.
+        </p>
+        <div className="mt-6 flex justify-center gap-3">
+          <Link
+            to="/build"
+            className="rounded-panel border border-line bg-console-2 px-4 py-2 font-display text-xs uppercase tracking-wider text-starlight hover:bg-console-2/70"
+          >
+            Build a rocket
+          </Link>
+          <Link
+            to="/countdown"
+            className="rounded-panel bg-go/90 px-4 py-2 font-display text-xs uppercase tracking-wider text-[#04180b] hover:bg-go"
+          >
+            Go to countdown
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ConsoleLabel({ station, desc }: { station: string; desc: string }) {
   return (
@@ -56,6 +89,16 @@ function BigBoardClocks() {
 }
 
 export default function Launch() {
+  // No active flight (deep link / reload): the console has nothing to show —
+  // hand the visitor to the countdown instead of a dead room. Guard lives in a
+  // hook-free wrapper so the console's hooks never render conditionally.
+  if (!simController.running && simController.sim.phase === 'pad') {
+    return <NoActiveMission />;
+  }
+  return <LaunchConsole />;
+}
+
+function LaunchConsole() {
   const navigate = useNavigate();
   const design = useMissionStore((s) => s.design);
   const siteId = useMissionStore((s) => s.siteId);
