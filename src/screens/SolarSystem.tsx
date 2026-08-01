@@ -102,6 +102,20 @@ function Planet({ def, onSelect }: { def: PlanetDef; onSelect: (id: string) => v
 }
 
 function Sun() {
+  // Soft radial glow texture — without a map the sprite renders as a square.
+  const glow = useMemo(() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0, 'rgba(255,235,190,1)');
+    grad.addColorStop(0.35, 'rgba(255,180,90,0.5)');
+    grad.addColorStop(1, 'rgba(255,150,60,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(c);
+  }, []);
+
   return (
     <group>
       <mesh>
@@ -109,11 +123,11 @@ function Sun() {
         <meshBasicMaterial color="#ffd27a" />
       </mesh>
       <pointLight intensity={220} distance={120} decay={1.6} color="#fff2d5" />
-      <sprite scale={[7, 7, 1]}>
+      <sprite scale={[9, 9, 1]}>
         <spriteMaterial
-          color="#ffb347"
+          map={glow}
           transparent
-          opacity={0.35}
+          opacity={0.55}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
