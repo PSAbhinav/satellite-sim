@@ -29,11 +29,24 @@ class SimController {
   /** Advance by real frame seconds; publishes to the bus. Returns drained events. */
   tick(realDt: number) {
     if (!this.running) return [];
-    // Auto-brake the warp near apoapsis so the player can't skip the burn
-    // window at 1000× (the orbit would coast on around into reentry).
+    // Auto-brake the warp near apoapsis / burn ignition so the player can't
+    // skip the maneuver at 1000× (the orbit would coast on into reentry).
     let warp = this.warp;
-    const tta = telemetryBus.get()?.orbit?.timeToApoapsisS;
-    if (this.sim.phase === 'coast' && tta !== undefined && tta > 0.5 && tta < warp * 2) {
+    const prev = telemetryBus.get();
+    const tta = prev?.orbit?.timeToApoapsisS;
+    const burn = prev?.burn;
+    if (burn?.burning) {
+      warp = 1;
+      this.warp = 1; // the burn plays out in real time, like a real webcast
+    } else if (burn?.armed && burn.tToIgnitionS > 0.5 && burn.tToIgnitionS < warp * 2) {
+      warp = Math.max(1, burn.tToIgnitionS / 2);
+    } else if (
+      this.sim.phase === 'coast' &&
+      !burn &&
+      tta !== undefined &&
+      tta > 0.5 &&
+      tta < warp * 2
+    ) {
       warp = Math.max(1, tta / 2);
     }
     this.clock.advance(realDt, warp, (dt) => this.sim.step(dt));
@@ -41,14 +54,14 @@ class SimController {
     telemetryBus.publish(snap);
     const events = this.sim.drainEvents();
     telemetryBus.pushEvents(events);
-    // Reaching apoapsis drops warp to 1× — that's the burn window.
-    if (events.some((e) => e.type === 'APOAPSIS')) this.warp = 1;
+    // Apoapsis or engine relight drops warp to 1× — that's the burn window.
+    if (events.some((e) => e.type === 'APOAPSIS' || e.type === 'SES_2')) this.warp = 1;
     if (this.sim.phase === 'failed') this.running = false;
     return events;
   }
 
-  circularize(): void {
-    this.sim.circularize();
+  armBurn(): void {
+    this.sim.armInsertionBurn();
     telemetryBus.publish(this.sim.snapshot());
   }
 

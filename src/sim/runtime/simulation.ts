@@ -2,7 +2,7 @@
 // ascent (RK4) → coast (closed-form Kepler) → circularization → orbit.
 // Pure TS: no React, no Three, no wall-clock time, no Math.random().
 
-import { DEG, R_EARTH, RAD } from '../constants';
+import { DEG, G0, MU_EARTH, R_EARTH, RAD } from '../constants';
 import type { Vec2 } from '../math/vec2';
 import type { Vec3 } from '../math/vec3';
 import { mag3 } from '../math/vec3';
@@ -93,6 +93,15 @@ export class Simulation {
   private orbitMass = 0;
   private orbitProp = 0;
 
+  // Orbit-insertion burn: planned, armed, then flown as a real finite burn.
+  private burnPlan: { tIgnite: number; duration: number; dvTarget: number } | null = null;
+  private burning = false;
+  private burnDvDone = 0;
+  // During the burn the raw state vector is integrated (Kepler doesn't hold
+  // under thrust); handed back to closed-form elements at SECO-2.
+  private burnR: Vec3 | null = null;
+  private burnV: Vec3 | null = null;
+
   private t = 0;
   private downrangeAngle0 = 0;
   private maxAltitude = 0;
@@ -119,6 +128,11 @@ export class Simulation {
     this.drainedCount = 0;
     this.result = null;
     this.elements = null;
+    this.burnPlan = null;
+    this.burning = false;
+    this.burnDvDone = 0;
+    this.burnR = null;
+    this.burnV = null;
 
     const lat = cfg.site.latDeg * DEG;
     this.incRad = Math.abs(lat); // due-east launch: inclination = |latitude|
@@ -173,42 +187,34 @@ export class Simulation {
     this.emit('LIFTOFF');
   }
 
-  /** Player-triggered circularization burn (cheapest at apoapsis). */
-  circularize(): void {
-    if (this.phase !== 'coast' || !this.elements || !this.cfg) return;
-    // Propagate to *now* — the burn happens where the vehicle actually is,
-    // not where it was at SECO.
+  /**
+   * Plan and arm the orbit-insertion burn — the way real missions do it.
+   * Guidance computes the Δv, derives the burn duration from the engine's
+   * true mass flow (no impulsive magic), and picks an ignition time that
+   * centers the burn on apoapsis. The vehicle then relights automatically at
+   * T-0 (SES-2) and steers along the remaining-Δv vector until cutoff.
+   */
+  armInsertionBurn(): void {
+    if (this.phase !== 'coast' || !this.elements || !this.cfg || this.burnPlan) return;
     const elNow = propagateElements(this.elements, this.t - this.elementsSetAtT);
-    const { r, v } = elementsToState(elNow);
-    // Vector burn to the local circular velocity — safe anywhere on the orbit.
-    const { dv: dvVec, mag: dvNeed } = circularizeHereDeltaV(r, v);
     const stage = this.cfg.design.stages[this.cfg.design.stages.length - 1];
+    const dvNeed = circularizationDeltaV(elNow);
     const dvAvail = availableDeltaV(stage.engine.ispVac, this.orbitMass, this.orbitProp);
-    const dv = Math.min(dvNeed, dvAvail);
+    const dvTarget = Math.min(dvNeed, dvAvail);
 
-    const frac = dvNeed > 0 ? dv / dvNeed : 0;
-    const vNew = {
-      x: v.x + dvVec.x * frac,
-      y: v.y + dvVec.y * frac,
-      z: v.z + dvVec.z * frac,
-    };
-    const propUsed = propForDeltaV(stage.engine.ispVac, this.orbitMass, dv);
-    this.orbitMass -= propUsed;
-    this.orbitProp = Math.max(0, this.orbitProp - propUsed);
+    const thrust = stage.engine.thrustVac * stage.engineCount;
+    const mdot = thrust / (stage.engine.ispVac * G0);
+    const duration = propForDeltaV(stage.engine.ispVac, this.orbitMass, dvTarget) / mdot;
+    // Center the burn on the node: ignite half the burn duration early.
+    const tIgnite = this.t + Math.max(0, timeToApoapsis(elNow) - duration / 2);
 
-    this.elements = stateToElements(r, vNew);
-    this.elementsSetAtT = this.t;
-    this.emit('CIRCULARIZATION_BURN', { dv: Math.round(dv) });
-
-    const cls = classify(this.elements);
-    if (cls === 'circular' || cls === 'elliptical') {
-      this.phase = 'orbit';
-      this.emit('ORBIT_ACHIEVED');
-      this.finish('orbit');
-    } else if (dvAvail < dvNeed) {
-      this.phase = 'orbit'; // still flying, but the result records the shortfall
-      this.finish(cls === 'suborbital' ? 'suborbital' : 'orbit', dvNeed - dvAvail);
-    }
+    this.burnPlan = { tIgnite, duration, dvTarget };
+    this.burnDvDone = 0;
+    this.emit('BURN_ARMED', {
+      dv: Math.round(dvNeed),
+      durationS: Math.round(duration),
+      ignitionInS: Math.round(tIgnite - this.t),
+    });
   }
 
   /** Advance the simulation by dt seconds (called from the fixed-step clock). */
@@ -366,10 +372,28 @@ export class Simulation {
       (this.ascent.fairingOn ? d.fairing.mass : 0);
   }
 
-  private stepOrbit(_dt: number): void {
+  private stepOrbit(dt: number): void {
     if (!this.elements) return;
+
+    if (this.burning) {
+      this.stepBurn(dt);
+      return;
+    }
+
     const dtSince = this.t - this.elementsSetAtT;
     const elNow = propagateElements(this.elements, dtSince);
+
+    // Armed burn reaching its ignition time → SES-2: switch from closed-form
+    // Kepler to numeric integration under thrust.
+    if (this.burnPlan && this.burnDvDone === 0 && this.t + dt >= this.burnPlan.tIgnite) {
+      const { r, v } = elementsToState(elNow);
+      this.burnR = r;
+      this.burnV = v;
+      this.burning = true;
+      this.emit('SES_2');
+      this.stepBurn(dt);
+      return;
+    }
 
     // Reentry check: a coasting "orbit" that DESCENDS into the atmosphere ends
     // there — no Keplering through the planet. (Climbing out through 90 km
@@ -385,10 +409,83 @@ export class Simulation {
 
     if (
       this.phase === 'coast' &&
+      !this.burnPlan &&
       timeToApoapsis(elNow) < 2 &&
       !this.recentlyFlagged('APOAPSIS', 30)
     ) {
       this.emit('APOAPSIS');
+    }
+  }
+
+  /**
+   * Finite insertion burn: inverse-square gravity + thrust steered along the
+   * remaining circularization Δv vector (closed-loop guidance, like a real
+   * upper stage), semi-implicit Euler at 50 ms substeps. Mass drains at the
+   * engine's true mdot; cutoff when the residual Δv is spent or the tanks run
+   * dry.
+   */
+  private stepBurn(dt: number): void {
+    const d = this.cfg!.design;
+    const stage = d.stages[d.stages.length - 1];
+    const thrust = stage.engine.thrustVac * stage.engineCount;
+    const mdot = thrust / (stage.engine.ispVac * G0);
+    let r = this.burnR!;
+    let v = this.burnV!;
+    let remaining = dt;
+
+    while (remaining > 1e-9) {
+      const h = Math.min(0.05, remaining);
+      remaining -= h;
+
+      const need = circularizeHereDeltaV(r, v);
+      if (need.mag < 2) {
+        this.endBurn(r, v, 'nominal');
+        return;
+      }
+      const aT = thrust / this.orbitMass;
+      const ux = need.dv.x / need.mag;
+      const uy = need.dv.y / need.mag;
+      const uz = need.dv.z / need.mag;
+      const rm = mag3(r);
+      const g = -MU_EARTH / (rm * rm * rm);
+      v = {
+        x: v.x + (g * r.x + aT * ux) * h,
+        y: v.y + (g * r.y + aT * uy) * h,
+        z: v.z + (g * r.z + aT * uz) * h,
+      };
+      r = { x: r.x + v.x * h, y: r.y + v.y * h, z: r.z + v.z * h };
+      this.orbitMass -= mdot * h;
+      this.orbitProp -= mdot * h;
+      this.burnDvDone += aT * h;
+
+      if (this.orbitProp <= 0) {
+        this.orbitProp = 0;
+        this.emit('PROPELLANT_DEPLETED');
+        this.endBurn(r, v, 'depleted');
+        return;
+      }
+    }
+    this.burnR = r;
+    this.burnV = v;
+  }
+
+  private endBurn(r: Vec3, v: Vec3, how: 'nominal' | 'depleted'): void {
+    this.burning = false;
+    this.burnR = null;
+    this.burnV = null;
+    this.elements = stateToElements(r, v);
+    this.elementsSetAtT = this.t;
+    this.emit('SECO_2', { dv: Math.round(this.burnDvDone) });
+
+    const cls = classify(this.elements);
+    const residual = circularizeHereDeltaV(r, v).mag;
+    if (cls === 'circular' || cls === 'elliptical') {
+      this.phase = 'orbit';
+      this.emit('ORBIT_ACHIEVED');
+      this.finish('orbit', how === 'depleted' && residual > 2 ? residual : undefined);
+    } else {
+      this.phase = 'orbit'; // still flying, but the result records the shortfall
+      this.finish(cls === 'suborbital' ? 'suborbital' : 'orbit', residual);
     }
   }
 
@@ -515,19 +612,33 @@ export class Simulation {
   }
 
   private orbitSnapshot(): SimSnapshot {
-    const el = propagateElements(this.elements!, this.t - this.elementsSetAtT);
-    const { r, v } = elementsToState(el);
     const d = this.cfg!.design;
     const lastStage = d.stages[d.stages.length - 1];
+    // Under thrust the truth lives in the integrated state vector, not the
+    // (stale) Kepler elements.
+    const live =
+      this.burning && this.burnR && this.burnV
+        ? { r: this.burnR, v: this.burnV }
+        : elementsToState(propagateElements(this.elements!, this.t - this.elementsSetAtT));
+    const { r, v } = live;
+    const el = this.burning ? stateToElements(r, v) : propagateElements(this.elements!, this.t - this.elementsSetAtT);
     const speed = mag3(v);
     const alt = mag3(r) - R_EARTH;
-    const dvNeed = circularizeHereDeltaV(r, v).mag;
+    // Pre-burn, quote the cost of the burn guidance will actually plan (at
+    // apoapsis — the cheapest point); while burning, the live residual.
+    const dvNeed = this.burning
+      ? circularizeHereDeltaV(r, v).mag
+      : el.e < 1 && el.a > 0
+        ? circularizationDeltaV(el)
+        : circularizeHereDeltaV(r, v).mag;
     const dvAvail = availableDeltaV(lastStage.engine.ispVac, this.orbitMass, this.orbitProp);
+    const thrustNow = this.burning ? lastStage.engine.thrustVac * lastStage.engineCount : 0;
+    const gNow = thrustNow > 0 ? thrustNow / (this.orbitMass * G0) : 0;
 
     const stages: StageTelemetry[] = d.stages.map((st, i) => ({
       fuelFrac: i === d.stages.length - 1 ? this.orbitProp / st.propMass : 0,
       propRemaining: i === d.stages.length - 1 ? this.orbitProp : 0,
-      thrust: 0,
+      thrust: i === d.stages.length - 1 ? thrustNow : 0,
     }));
 
     return {
@@ -538,14 +649,14 @@ export class Simulation {
       verticalSpeed: 0,
       downrange: 0,
       mass: this.orbitMass,
-      thrust: 0,
-      twr: 0,
+      thrust: thrustNow,
+      twr: gNow,
       q: 0,
       maxQSoFar: this.maxQ,
       mach: 0,
-      accelG: 0,
+      accelG: gNow,
       flightPathAngleDeg: 0,
-      throttle: 0,
+      throttle: this.burning ? 1 : 0,
       activeStage: d.stages.length - 1,
       stages,
       fairingOn: false,
@@ -562,17 +673,38 @@ export class Simulation {
         circDv: dvNeed,
         availDv: dvAvail,
       },
+      burn: this.burnPlan
+        ? {
+            armed: true,
+            burning: this.burning,
+            tToIgnitionS: this.burnPlan.tIgnite - this.t,
+            durationS: this.burnPlan.duration,
+            dvPlanned: this.burnPlan.dvTarget,
+            frac:
+              this.burnPlan.dvTarget > 0
+                ? Math.min(1, this.burnDvDone / this.burnPlan.dvTarget)
+                : 0,
+          }
+        : undefined,
       subpoint: subSatellitePoint(r, this.t),
     };
   }
 
-  /** Full orbit path points (ECI) for rendering the orbit line, n samples. */
+  /**
+   * Full orbit path points (ECI) for rendering the orbit line, n samples.
+   * Under thrust the osculating orbit is recomputed from the live integrated
+   * state each call, so the drawn ellipse visibly grows through the burn.
+   */
   orbitPathPoints(n = 128): Vec3[] {
-    if (!this.elements) return [];
+    const el =
+      this.burning && this.burnR && this.burnV
+        ? stateToElements(this.burnR, this.burnV)
+        : this.elements;
+    if (!el || el.e >= 1 || el.a <= 0) return [];
     const pts: Vec3[] = [];
     for (let k = 0; k <= n; k++) {
       const nu = (2 * Math.PI * k) / n;
-      const { r } = elementsToState({ ...this.elements, nu });
+      const { r } = elementsToState({ ...el, nu });
       pts.push(r);
     }
     return pts;

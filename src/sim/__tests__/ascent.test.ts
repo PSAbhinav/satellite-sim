@@ -63,20 +63,28 @@ describe('full ascent (default stack, Cape, 550 km target)', () => {
     }
   });
 
-  it('circularizes into a stable orbit at apoapsis', () => {
+  it('arms the insertion burn and flies a finite burn into a stable orbit', () => {
     const sim = new Simulation();
     sim.configure({ design: defaultDesign(), site: SITES.cape, targetAltitude: 550e3 });
     runToEnd(sim);
     expect(sim.phase).toBe('coast');
 
-    // Warp to apoapsis with tta-aware steps (big jumps far out, fine near it).
+    // Arm like the player would; guidance ignites on time and the finite
+    // burn (real mdot, closed-loop steering) runs to SECO-2.
+    sim.armInsertionBurn();
+    const plan = sim.snapshot().burn!;
+    expect(plan.armed).toBe(true);
+    expect(plan.durationS).toBeGreaterThan(5); // a real burn, not an impulse
     let guard = 0;
-    while (sim.phase === 'coast' && guard++ < 100_000) {
-      const tta = sim.snapshot().orbit!.timeToApoapsisS;
-      if (tta <= 5) break;
-      sim.step(Math.max(0.02, Math.min(10, tta - 3)));
+    while (sim.phase === 'coast' && guard++ < 200_000) {
+      const burn = sim.snapshot().burn!;
+      sim.step(
+        burn.burning ? 0.02 : Math.max(0.02, Math.min(10, burn.tToIgnitionS - 0.5)),
+      );
     }
-    sim.circularize();
+    const types = sim.allEvents().map((e) => e.type);
+    expect(types).toContain('SES_2');
+    expect(types).toContain('SECO_2');
     expect(sim.phase).toBe('orbit');
     expect(sim.result?.outcome).toBe('orbit');
     const orbit = sim.snapshot().orbit!;
@@ -188,14 +196,15 @@ describe('full flight with side boosters (end-to-end)', () => {
     expect(types).toContain('BOOSTER_SEP');
     expect(types.indexOf('BOOSTER_SEP')).toBeLessThan(types.indexOf('STAGE_SEP'));
 
-    // Warp to apoapsis and circularize.
+    // Arm the insertion burn and let the planned finite burn fly out.
+    sim.armInsertionBurn();
     let guard = 0;
-    while (sim.phase === 'coast' && guard++ < 100_000) {
-      const tta = sim.snapshot().orbit!.timeToApoapsisS;
-      if (tta <= 5) break;
-      sim.step(Math.max(0.02, Math.min(10, tta - 3)));
+    while (sim.phase === 'coast' && guard++ < 200_000) {
+      const burn = sim.snapshot().burn!;
+      sim.step(
+        burn.burning ? 0.02 : Math.max(0.02, Math.min(10, burn.tToIgnitionS - 0.5)),
+      );
     }
-    sim.circularize();
     expect(sim.phase).toBe('orbit');
     expect(sim.result?.outcome).toBe('orbit');
     const orbit = sim.snapshot().orbit!;

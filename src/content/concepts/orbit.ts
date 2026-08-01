@@ -94,9 +94,9 @@ export const concepts: Concept[] = [
     levels: {
       kid: 'After the big climb, your rocket coasts up to the tip-top of its arc. Right there, you give one more push — like pumping your legs at the top of a swing — and the arc becomes a full circle around the Earth. You’re in orbit!',
       student:
-        'Ascent leaves you on an ellipse whose apoapsis touches your target altitude but whose periapsis is deep in the atmosphere. Coast to apoapsis and burn prograde: this raises the periapsis until the orbit is round. Burn too little and you still dip into air; too late and the geometry is wrong.',
+        'Ascent leaves you on an ellipse whose apoapsis touches your target altitude but whose periapsis is deep in the atmosphere. Guidance arms a burn centered on apoapsis: the engine relights (SES-2), thrust raises the periapsis second by second, and cutoff (SECO-2) comes when the orbit is round. Watch the periapsis climb while it burns.',
       engineer:
-        'Δv_circ = √(μ/r_a) − v_apo, with v_apo from vis-viva at r_a. The sim applies it impulsively (labeled simplification; finite burns need thrust-arc steering). It is the second burn of a Hohmann transfer with the ascent as the first.',
+        'Δv_circ = √(μ/r_a) − v_apo, with v_apo from vis-viva at r_a. The sim flies it as a finite burn like a real upper stage: ignition at t_apo − t_burn/2 (burn centered on the node), thrust steered along the remaining-Δv vector (closed-loop guidance), mass drawn at the engine’s true ṁ = F/(Isp·g0), cutoff at residual < 2 m/s. It is the second burn of a Hohmann transfer with the ascent as the first.',
     },
     formula: {
       tex: '\\Delta v = \\sqrt{\\frac{\\mu}{r_a}} - v_{apo}',

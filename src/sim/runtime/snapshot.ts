@@ -50,4 +50,17 @@ export interface SimSnapshot {
     availDv: number;
   };
   subpoint?: { latDeg: number; lonDeg: number };
+  /** Insertion burn plan/progress (coast & orbit phases). */
+  burn?: {
+    armed: boolean;
+    burning: boolean;
+    /** Seconds until planned ignition (negative once past). */
+    tToIgnitionS: number;
+    /** Planned burn duration, s. */
+    durationS: number;
+    /** Planned Δv, m/s. */
+    dvPlanned: number;
+    /** Fraction of planned Δv delivered so far. */
+    frac: number;
+  };
 }

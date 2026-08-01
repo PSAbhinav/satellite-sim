@@ -13,8 +13,10 @@ import { useTelemetry } from '@/state/useTelemetry';
 import { useMissionStore } from '@/state/useMissionStore';
 import { simController } from '@/state/simController';
 import { sToMinSec } from '@/sim/units';
+import { cn } from '@/lib/utils';
 
 const WARPS = [1, 10, 100, 1000];
+const GLASS = 'rounded-panel border border-line/60 bg-void/75 backdrop-blur-md';
 
 export default function OrbitOps() {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ export default function OrbitOps() {
 
   const orbit = useTelemetry((s) => s.orbit, 6);
   const phase = useTelemetry((s) => s.phase, 4);
+  const burn = useTelemetry((s) => s.burn, 8);
 
   // Reaching a stable orbit unlocks the orbit Spacepedia section + solar system.
   useEffect(() => {
@@ -45,8 +48,14 @@ export default function OrbitOps() {
   const enough = (orbit?.availDv ?? 0) >= (orbit?.circDv ?? Infinity);
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] flex-col gap-2 p-2">
-      <div className="flex items-center justify-between rounded-panel border border-line bg-console px-3 py-1.5">
+    <div className="relative h-[calc(100vh-3rem)] overflow-hidden">
+      {/* The orbit IS the screen */}
+      <div className="absolute inset-0">
+        <OrbitScene />
+      </div>
+
+      {/* Top strip: room name, MET, warp */}
+      <div className={cn('absolute inset-x-3 top-3 flex items-center justify-between px-4 py-2', GLASS)}>
         <span className="font-display text-xs uppercase tracking-[0.25em] text-muted-star">
           Mission Control · {phase === 'orbit' ? 'On orbit' : 'Orbit insertion'}
         </span>
@@ -65,13 +74,9 @@ export default function OrbitOps() {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[1fr_280px]">
-        <div className="min-h-[300px] overflow-hidden rounded-panel border border-line">
-          <OrbitScene />
-        </div>
-
-        <div className="flex min-h-0 flex-col gap-2">
-          <Card>
+      {/* Right rail: elements + maneuver, floating over the scene */}
+      <div className="absolute bottom-3 right-3 top-16 flex w-80 flex-col gap-2 overflow-y-auto">
+          <Card className={cn('shrink-0', GLASS)}>
             <CardHeader>
               <CardTitle>Orbital elements</CardTitle>
             </CardHeader>
@@ -99,45 +104,94 @@ export default function OrbitOps() {
           </Card>
 
           {canBurn && (
-            <Card className={nearApoapsis ? 'border-phosphor/60' : ''}>
+            <Card
+              className={cn(
+                'shrink-0',
+                GLASS,
+                burn?.burning
+                  ? 'border-flame/70'
+                  : burn
+                    ? 'border-flame/40'
+                    : nearApoapsis
+                      ? 'border-phosphor/60'
+                      : '',
+              )}
+            >
               <CardHeader>
                 <CardTitle>
-                  <InfoChip conceptId="circularization">Circularization burn</InfoChip>
+                  <InfoChip conceptId="circularization">Insertion burn</InfoChip>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="telemetry flex justify-between text-sm">
-                  <span className="text-muted-star">Δv needed</span>
-                  <span>{orbit!.circDv.toFixed(0)} m/s</span>
-                </div>
-                <div className="telemetry flex justify-between text-sm">
-                  <span className="text-muted-star">Δv available</span>
-                  <span className={enough ? 'text-go' : 'text-crimson'}>
-                    {orbit!.availDv.toFixed(0)} m/s
-                  </span>
-                </div>
-                {!nearApoapsis && (
-                  <p className="text-xs text-muted-star">
-                    Wait for apoapsis — a burn there raises your periapsis most efficiently. Use
-                    time-warp above.
-                  </p>
+                {!burn && (
+                  <>
+                    <div className="telemetry flex justify-between text-sm">
+                      <span className="text-muted-star">Δv needed</span>
+                      <span>{orbit!.circDv.toFixed(0)} m/s</span>
+                    </div>
+                    <div className="telemetry flex justify-between text-sm">
+                      <span className="text-muted-star">Δv available</span>
+                      <span className={enough ? 'text-go' : 'text-crimson'}>
+                        {orbit!.availDv.toFixed(0)} m/s
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-star">
+                      Guidance plans this like a real mission: burn time from the engine&apos;s
+                      mass flow, ignition centered on apoapsis. Arm it and the stage relights
+                      itself at T−0.
+                    </p>
+                    <Button className="w-full" variant="go" onClick={() => simController.armBurn()}>
+                      <Flame className="size-4" /> Arm insertion burn
+                    </Button>
+                  </>
                 )}
-                <Button
-                  className="w-full"
-                  variant={nearApoapsis ? 'go' : 'secondary'}
-                  onClick={() => {
-                    simController.warp = 1;
-                    simController.circularize();
-                  }}
-                >
-                  <Flame className="size-4" /> Execute burn
-                </Button>
+                {burn && !burn.burning && (
+                  <>
+                    <div className="py-1 text-center">
+                      <div className="telemetry text-2xl font-bold text-flame">
+                        T−{sToMinSec(Math.max(0, burn.tToIgnitionS))}
+                      </div>
+                      <div className="mt-0.5 font-display text-[9px] uppercase tracking-[0.25em] text-muted-star">
+                        to second engine start
+                      </div>
+                    </div>
+                    <Row label="Planned Δv" value={`${burn.dvPlanned.toFixed(0)} m/s`} />
+                    <Row label="Burn duration" value={`${burn.durationS.toFixed(0)} s`} />
+                    <p className="text-xs text-muted-star">
+                      Armed. Warp ahead if you like — the clock brakes on its own before ignition.
+                    </p>
+                  </>
+                )}
+                {burn?.burning && (
+                  <>
+                    <div className="flex items-center gap-2 text-flame">
+                      <Flame className="size-4 animate-pulse" />
+                      <span className="font-display text-xs uppercase tracking-wider">
+                        SES-2 — burn in progress
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-console-2">
+                      <div
+                        className="h-full rounded-full bg-flame"
+                        style={{ width: `${burn.frac * 100}%` }}
+                      />
+                    </div>
+                    <Row
+                      label="Δv delivered"
+                      value={`${(burn.frac * burn.dvPlanned).toFixed(0)} / ${burn.dvPlanned.toFixed(0)} m/s`}
+                    />
+                    <Row
+                      label="Periapsis"
+                      value={`${((orbit?.periapsisAlt ?? 0) / 1000).toFixed(0)} km`}
+                    />
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
 
           {phase === 'orbit' && (
-            <Card className="border-go/50">
+            <Card className={cn('shrink-0', GLASS, 'border-go/50')}>
               <CardContent className="p-4 text-center">
                 <Badge variant="go">ORBIT ACHIEVED</Badge>
                 <p className="mt-2 text-xs text-muted-star">
@@ -155,10 +209,11 @@ export default function OrbitOps() {
             </Card>
           )}
 
-          <div className="min-h-[120px] flex-1">
-            <EventFeed />
-          </div>
-        </div>
+      </div>
+
+      {/* Bottom-left: the flight log, always on screen — no scrolling to find it */}
+      <div className="absolute bottom-3 left-3 h-44 w-96">
+        <EventFeed />
       </div>
     </div>
   );

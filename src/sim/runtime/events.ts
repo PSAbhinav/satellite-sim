@@ -11,7 +11,9 @@ export type SimEventType =
   | 'FAIRING_JETTISON'
   | 'SECO'
   | 'APOAPSIS'
-  | 'CIRCULARIZATION_BURN'
+  | 'BURN_ARMED'
+  | 'SES_2'
+  | 'SECO_2'
   | 'ORBIT_ACHIEVED'
   | 'PROPELLANT_DEPLETED'
   | 'STRUCTURAL_FAILURE'
@@ -45,7 +47,9 @@ export const CALLOUTS: Record<SimEventType, { severity: EventSeverity; message: 
   FAIRING_JETTISON: { severity: 'nominal', message: 'Fairing jettison — payload exposed to space.' },
   SECO: { severity: 'callout', message: 'SECO — engine cutoff. Coasting to apoapsis.' },
   APOAPSIS: { severity: 'callout', message: 'Apoapsis reached.' },
-  CIRCULARIZATION_BURN: { severity: 'callout', message: 'Circularization burn.' },
+  BURN_ARMED: { severity: 'nominal', message: 'Insertion burn armed — guidance will ignite on time.' },
+  SES_2: { severity: 'callout', message: 'Second engine start — insertion burn underway.' },
+  SECO_2: { severity: 'callout', message: 'SECO-2 — insertion burn complete.' },
   ORBIT_ACHIEVED: { severity: 'callout', message: 'Orbit achieved! Welcome to space.' },
   PROPELLANT_DEPLETED: { severity: 'warning', message: 'Propellant depleted.' },
   STRUCTURAL_FAILURE: { severity: 'critical', message: 'Vehicle breakup — structural limits exceeded.' },

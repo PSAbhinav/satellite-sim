@@ -259,7 +259,18 @@ export function ProceduralRocket3D({
       const fairing = groupRef.current.getObjectByName('fairing');
       if (fairing) fairing.visible = snap.fairingOn;
       const sideBoosters = groupRef.current.getObjectByName('side-boosters');
-      if (sideBoosters) sideBoosters.visible = snap.boosterFuelFrac !== undefined;
+      if (sideBoosters) {
+        sideBoosters.visible = snap.boosterFuelFrac !== undefined;
+        // Strap-ons fire with the core: each carries its own plume, breathing
+        // like the core's and gone the instant the casings drop.
+        const bOn = snap.boosterFuelFrac !== undefined && snap.thrust > 0;
+        sideBoosters.traverse((o) => {
+          if (o.name === 'bplume') {
+            o.visible = bOn;
+            if (bOn) o.scale.set(1, 1.15 + (snap.thrust / 8e6) * 1.5 + Math.random() * 0.3, 1);
+          }
+        });
+      }
     }
   });
 
@@ -293,6 +304,17 @@ export function ProceduralRocket3D({
                 <mesh position={[0, -br * 0.8, 0]}>
                   <coneGeometry args={[br * 0.55, br * 1.4, 12, 1, true]} />
                   <meshStandardMaterial color="#3a4048" roughness={0.35} metalness={0.6} side={THREE.DoubleSide} />
+                </mesh>
+                <mesh name="bplume" position={[0, -br * 1.5 - 0.7, 0]} visible={false}>
+                  <coneGeometry args={[br * 0.7, 1.5, 12, 1, true]} />
+                  <meshBasicMaterial
+                    color="#ffb347"
+                    transparent
+                    opacity={0.85}
+                    blending={THREE.AdditiveBlending}
+                    depthWrite={false}
+                    side={THREE.DoubleSide}
+                  />
                 </mesh>
               </group>
             );
