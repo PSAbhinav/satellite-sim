@@ -5,8 +5,9 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
+// Base path: GitHub Pages serves under /satellite-sim/, Vercel from the root.
 export default defineConfig({
-  base: '/satellite-sim/',
+  base: process.env.VERCEL ? '/' : '/satellite-sim/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
