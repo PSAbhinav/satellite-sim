@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
 import { useMissionStore } from '@/state/useMissionStore';
 import { sToMinSec } from '@/sim/units';
 import type { EventSeverity } from '@/sim/runtime/events';
@@ -26,15 +25,13 @@ export function EventFeed() {
       </div>
       <div className="flex-1 space-y-1 overflow-y-auto p-2">
         {events.map((e, i) => (
-          <motion.div
+          <div
             key={`${e.type}-${i}`}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex gap-2 text-xs"
+            className="flex gap-2 text-xs motion-safe:animate-[route-in_0.25s_ease-out]"
           >
             <span className="telemetry shrink-0 text-muted-star/70">{sToMinSec(e.t)}</span>
             <span className={SEVERITY_COLOR[e.severity]}>{e.message}</span>
-          </motion.div>
+          </div>
         ))}
         {!events.length && (
           <p className="p-2 text-xs text-muted-star/60">Waiting for ignition…</p>

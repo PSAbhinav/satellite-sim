@@ -102,7 +102,7 @@ export default function Launch() {
   return (
     <div className="flex h-[calc(100vh-3rem)] flex-col gap-1.5 overflow-hidden p-1.5">
       {/* ── THE BIG BOARD — front wall: clocks + world map + status ── */}
-      <div className="grid h-40 shrink-0 grid-cols-[220px_1fr_190px] gap-1.5">
+      <div className="grid h-36 shrink-0 grid-cols-[220px_1fr_190px] gap-1.5">
         <div className="rounded-panel border border-line bg-console">
           <BigBoardClocks />
         </div>
@@ -153,7 +153,7 @@ export default function Launch() {
           </div>
         </div>
 
-        <div className="order-1 min-h-[220px] overflow-hidden rounded-panel border border-line lg:order-2">
+        <div className="order-1 min-h-[160px] overflow-hidden rounded-panel border border-line lg:order-2">
           <AscentScene design={design} />
         </div>
 
@@ -173,7 +173,7 @@ export default function Launch() {
       </div>
 
       {/* ── Flight Director loop ── */}
-      <div className="h-28 shrink-0">
+      <div className="h-24 shrink-0">
         <EventFeed />
       </div>
     </div>

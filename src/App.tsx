@@ -1,6 +1,5 @@
 import { Suspense, lazy } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
 import { TopBar } from '@/components/TopBar';
 
 const Home = lazy(() => import('@/screens/Home'));
@@ -28,29 +27,25 @@ export default function App() {
             </div>
           }
         >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              className="h-full"
-              initial={{ opacity: 0, y: 10, scale: 0.995 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.995 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <Routes location={location}>
-                <Route path="/" element={<Home />} />
-                <Route path="/build" element={<Assembly />} />
-                <Route path="/payload" element={<PayloadBay />} />
-                <Route path="/site" element={<SiteWeather />} />
-                <Route path="/countdown" element={<Countdown />} />
-                <Route path="/launch" element={<Launch />} />
-                <Route path="/orbit" element={<OrbitOps />} />
-                <Route path="/debrief" element={<Debrief />} />
-                <Route path="/spacepedia" element={<Spacepedia />} />
-                <Route path="/solar-system" element={<SolarSystem />} />
-              </Routes>
-            </motion.div>
-          </AnimatePresence>
+          {/* CSS route transition: completes by clock time even when the tab is
+              backgrounded (rAF-driven animations freeze screens at opacity 0). */}
+          <div
+            key={location.pathname}
+            className="h-full motion-safe:animate-[route-in_0.28s_ease-out]"
+          >
+            <Routes location={location}>
+              <Route path="/" element={<Home />} />
+              <Route path="/build" element={<Assembly />} />
+              <Route path="/payload" element={<PayloadBay />} />
+              <Route path="/site" element={<SiteWeather />} />
+              <Route path="/countdown" element={<Countdown />} />
+              <Route path="/launch" element={<Launch />} />
+              <Route path="/orbit" element={<OrbitOps />} />
+              <Route path="/debrief" element={<Debrief />} />
+              <Route path="/spacepedia" element={<Spacepedia />} />
+              <Route path="/solar-system" element={<SolarSystem />} />
+            </Routes>
+          </div>
         </Suspense>
       </main>
     </div>

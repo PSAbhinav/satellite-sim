@@ -36,6 +36,19 @@
   }
 }
 
+/* Route enter transition — pure CSS so it completes even if rAF was frozen
+   (framer-motion left screens stuck at opacity 0 in backgrounded tabs). */
+@keyframes route-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes accordion-down {
   from {
     height: 0;
