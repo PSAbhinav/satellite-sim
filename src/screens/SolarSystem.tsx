@@ -86,7 +86,8 @@ function Planet({ def, onSelect }: { def: PlanetDef; onSelect: (id: string) => v
             <meshBasicMaterial color="#cbb98a" transparent opacity={0.5} side={THREE.DoubleSide} />
           </mesh>
         )}
-        <Html center distanceFactor={26} style={{ pointerEvents: 'none' }}>
+        {/* zIndexRange keeps labels UNDER the dialog overlay (drei's default is ~16M). */}
+        <Html center distanceFactor={26} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
           <div
             className={`font-display text-[11px] uppercase tracking-wider ${
               hover ? 'text-phosphor' : 'text-muted-star'
