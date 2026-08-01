@@ -1,17 +1,19 @@
-import { Suspense, lazy } from 'react';
+import { Suspense } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { TopBar } from '@/components/TopBar';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { lazyWithReload } from '@/lib/lazyWithReload';
 
-const Home = lazy(() => import('@/screens/Home'));
-const Assembly = lazy(() => import('@/screens/Assembly'));
-const PayloadBay = lazy(() => import('@/screens/PayloadBay'));
-const SiteWeather = lazy(() => import('@/screens/SiteWeather'));
-const Countdown = lazy(() => import('@/screens/Countdown'));
-const Launch = lazy(() => import('@/screens/Launch'));
-const OrbitOps = lazy(() => import('@/screens/OrbitOps'));
-const Debrief = lazy(() => import('@/screens/Debrief'));
-const Spacepedia = lazy(() => import('@/screens/Spacepedia'));
-const SolarSystem = lazy(() => import('@/screens/SolarSystem'));
+const Home = lazyWithReload(() => import('@/screens/Home'));
+const Assembly = lazyWithReload(() => import('@/screens/Assembly'));
+const PayloadBay = lazyWithReload(() => import('@/screens/PayloadBay'));
+const SiteWeather = lazyWithReload(() => import('@/screens/SiteWeather'));
+const Countdown = lazyWithReload(() => import('@/screens/Countdown'));
+const Launch = lazyWithReload(() => import('@/screens/Launch'));
+const OrbitOps = lazyWithReload(() => import('@/screens/OrbitOps'));
+const Debrief = lazyWithReload(() => import('@/screens/Debrief'));
+const Spacepedia = lazyWithReload(() => import('@/screens/Spacepedia'));
+const SolarSystem = lazyWithReload(() => import('@/screens/SolarSystem'));
 
 export default function App() {
   const location = useLocation();
@@ -20,6 +22,7 @@ export default function App() {
     <div className="flex min-h-screen flex-col">
       <TopBar />
       <main className="relative flex-1">
+        <ErrorBoundary>
         <Suspense
           fallback={
             <div className="flex h-64 items-center justify-center font-display text-muted-star">
@@ -47,6 +50,7 @@ export default function App() {
             </Routes>
           </div>
         </Suspense>
+        </ErrorBoundary>
       </main>
     </div>
   );
