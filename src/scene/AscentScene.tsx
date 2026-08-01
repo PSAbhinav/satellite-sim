@@ -185,10 +185,11 @@ function SceneContent({ design }: { design: RocketDesign }) {
       worldRef.current.visible = alt < 25_000;
     }
     // From ~20 km up, the real view takes over: Earth's limb below, curving
-    // away as altitude grows (compressed scale so the horizon stays in frame).
+    // away as altitude grows. Keep the globe far enough that its texture
+    // reads as terrain, never as magnified pixels (min ~450 units standoff).
     if (earthRef.current) {
       earthRef.current.visible = alt > 18_000;
-      earthRef.current.position.y = -(EARTH_R + 40 + (alt / 1000) * 2.2);
+      earthRef.current.position.y = -(EARTH_R + 450 + (alt / 1000) * 2.6);
     }
     if (starsRef.current) starsRef.current.visible = k > 0.45;
   });

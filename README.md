@@ -51,3 +51,14 @@ Web Audio — no audio assets. Built with React 19, three.js/R3F, zustand,
 uPlot, Radix, Tailwind v4.
 
 Planet textures by Solar System Scope (solarsystemscope.com/textures), CC BY 4.0.
+
+## Asset & license audit
+- Planet, Sun, Milky Way, 8K Earth day/night maps: Solar System Scope
+  (solarsystemscope.com/textures) - CC BY 4.0, attribution above. These are
+  themselves derived from NASA imagery (public domain).
+- Earth cloud layer: NASA Blue Marble derivative (public domain source imagery).
+- Fonts: Chakra Petch, Inter, JetBrains Mono via Fontsource - SIL Open Font License.
+- Libraries: React, three.js, @react-three/fiber & drei, zustand, uPlot, KaTeX,
+  Radix UI, Tailwind - MIT; lucide icons - ISC.
+- Music, sound effects, rocket and pad models: generated procedurally in this
+  repo (no third-party assets).
