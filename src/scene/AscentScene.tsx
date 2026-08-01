@@ -76,10 +76,19 @@ function LaunchComplex() {
           <meshStandardMaterial {...CONCRETE} />
         </mesh>
       ))}
-      <mesh position={[0, TABLE_H - 0.09, 0]}>
-        <boxGeometry args={[4.4, 0.18, 4.4]} />
-        <meshStandardMaterial {...STEEL} />
-      </mesh>
+      {/* Table top is a frame with a central exhaust opening — the engine
+          bells hang through it over the trench. */}
+      {[
+        { pos: [0, TABLE_H - 0.09, 1.75] as const, size: [4.4, 0.18, 0.9] as const },
+        { pos: [0, TABLE_H - 0.09, -1.75] as const, size: [4.4, 0.18, 0.9] as const },
+        { pos: [1.75, TABLE_H - 0.09, 0] as const, size: [0.9, 0.18, 2.6] as const },
+        { pos: [-1.75, TABLE_H - 0.09, 0] as const, size: [0.9, 0.18, 2.6] as const },
+      ].map((b, i) => (
+        <mesh key={i} position={b.pos as unknown as [number, number, number]}>
+          <boxGeometry args={b.size as unknown as [number, number, number]} />
+          <meshStandardMaterial {...STEEL} />
+        </mesh>
+      ))}
 
       {/* Fixed service tower with platforms, top crane and red beacon section */}
       <group position={[3.6, 0, 0]}>
