@@ -14,6 +14,7 @@ import { useUiStore } from '@/state/useUiStore';
 import { simController } from '@/state/simController';
 import { useSimLoop } from '@/state/useSimLoop';
 import { AscentScene } from '@/scene/AscentScene';
+import { NextLaunchCard } from '@/components/NextLaunchCard';
 import { beep, setRumble, speak } from '@/lib/audio';
 import { cn } from '@/lib/utils';
 
@@ -83,6 +84,8 @@ export default function Countdown() {
     <div className="relative h-[calc(100vh-3rem)] overflow-hidden">
       {/* Cinematic slow orbit around the pad while the count runs. */}
       <AscentScene design={design} cinematic />
+
+      <NextLaunchCard />
 
       {/* Mission strap, top center */}
       <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
