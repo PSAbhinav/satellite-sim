@@ -168,14 +168,17 @@ describe('weather & launch commit', () => {
 });
 
 describe('sanity: pad state', () => {
-  it('starts at the surface with the rotation-bonus initial speed', () => {
+  it('starts at the surface: zero airspeed, rotation-bonus inertial speed', () => {
     const sim = new Simulation();
     sim.configure({ design: defaultDesign(), site: SITES.kourou, targetAltitude: 400e3 });
     const s = sim.snapshot();
     expect(Math.abs(s.altitude)).toBeLessThan(1);
-    // Kourou at 5.2°N: inertial speed ≈ 463 m/s.
-    expect(s.speed).toBeGreaterThan(455);
-    expect(s.speed).toBeLessThan(470);
+    // Displayed (surface-relative) speed is 0 on the pad…
+    expect(s.speed).toBeLessThan(1);
+    // …but the inertial (ECI) speed carries Kourou's ≈463 m/s rotation bonus.
+    const vEci = Math.hypot(s.vEci.x, s.vEci.y, s.vEci.z);
+    expect(vEci).toBeGreaterThan(455);
+    expect(vEci).toBeLessThan(470);
   });
 });
 

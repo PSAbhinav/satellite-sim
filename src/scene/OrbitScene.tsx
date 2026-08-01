@@ -3,7 +3,8 @@
 // right-drag pans, scroll zooms (OrbitControls).
 
 import { useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
+import { SceneCanvas } from './SceneCanvas';
 import { Line, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { R_EARTH } from '@/sim/constants';
@@ -101,7 +102,7 @@ function OrbitPath() {
 
 export function OrbitScene() {
   return (
-    <Canvas camera={{ position: [0, 1.8, 3.6], fov: 45 }} dpr={[1, 1.5]}>
+    <SceneCanvas camera={{ position: [0, 1.8, 3.6], fov: 45 }} >
       <color attach="background" args={['#05070f']} />
       <ambientLight intensity={0.25} />
       <directionalLight position={[50, 0, 20]} intensity={2} />
@@ -110,6 +111,6 @@ export function OrbitScene() {
       <Satellite />
       <OrbitPath />
       <OrbitControls enablePan minDistance={1.4} maxDistance={20} />
-    </Canvas>
+    </SceneCanvas>
   );
 }

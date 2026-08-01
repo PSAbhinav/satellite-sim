@@ -1,32 +1,51 @@
-# React + TypeScript + Vite
+# Orbital Academy (satellite-sim)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A physics-first space program for every age, in the browser. Build a rocket from
+**real flight hardware** (Falcon 9, Saturn V, PSLV, Electron…), fight the weather
+through a real go/no-go poll, fly the launch from a mission-control room modeled
+on the real MCC, coast to apoapsis, circularize — and unlock the Spacepedia and
+Solar System as you go.
 
-Currently, two official plugins are available:
+Successor to Satellite-Sim Phase 3/4: rebuilt from scratch with an actual
+physics engine instead of mock telemetry.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## The physics is real
 
-## React Compiler
+All simulation runs in the browser, in a pure-TypeScript core (`src/sim/`) with
+a 36-test known-answer suite:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Tsiolkovsky rocket equation** per stage — Δv budgets, TWR, mass ratios
+- **RK4 ascent integration** in the inertial launch plane: inverse-square
+  gravity, exponential-atmosphere drag against the rotating air, pressure-blended
+  thrust, gravity-turn steering at zero angle of attack
+- **Closed-form Kepler propagation** on orbit (zero drift at 1000× time-warp),
+  state-vector ↔ orbital-elements conversion, vector circularization burns
+- **Seeded weather + launch-commit criteria** modeled on the real lightning/wind
+  rules — same site + same day always gives the same briefing
+- Honest failure modes: max-Q breakup, trajectory sag, reentry, propellant
+  depletion, escape — each explained in the debrief at your chosen depth
 
-## Expanding the Oxlint configuration
+Explanations adapt via the age dial: **Kid / Student / Engineer**, down to the
+formulas (KaTeX) on every concept chip.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Run it
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev        # http://localhost:5173/satellite-sim/
+npm test           # physics known-answer suite
+npm run build
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Simplifications (taught, not hidden)
+
+Spherical Earth (no J2), no third body, isothermal atmosphere, point-mass
+vehicle, impulsive burns, due-east launches (inclination = site latitude).
+Each is labeled in-app where it matters.
+
+## Credits
+
+Earth textures derived from NASA Blue Marble imagery (via the original
+Satellite-Sim repos, recompressed). Music and sound are synthesized live in
+Web Audio — no audio assets. Built with React 19, three.js/R3F, zustand,
+uPlot, Radix, Tailwind v4.

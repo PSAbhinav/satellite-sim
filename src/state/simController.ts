@@ -41,6 +41,8 @@ class SimController {
     telemetryBus.publish(snap);
     const events = this.sim.drainEvents();
     telemetryBus.pushEvents(events);
+    // Reaching apoapsis drops warp to 1× — that's the burn window.
+    if (events.some((e) => e.type === 'APOAPSIS')) this.warp = 1;
     if (this.sim.phase === 'failed') this.running = false;
     return events;
   }

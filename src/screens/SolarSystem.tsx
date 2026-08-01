@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
+import { SceneCanvas } from '@/scene/SceneCanvas';
 import { OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Lock } from 'lucide-react';
@@ -152,7 +153,7 @@ export default function SolarSystem() {
 
   return (
     <div className="relative h-[calc(100vh-3rem)]">
-      <Canvas camera={{ position: [0, 26, 34], fov: 50 }} dpr={[1, 1.5]}>
+      <SceneCanvas camera={{ position: [0, 26, 34], fov: 50 }} >
         <color attach="background" args={['#04060d']} />
         <ambientLight intensity={0.1} />
         <Starfield count={3000} radius={300} />
@@ -161,7 +162,7 @@ export default function SolarSystem() {
           <Planet key={p.id} def={p} onSelect={setSelected} />
         ))}
         <OrbitControls enablePan minDistance={6} maxDistance={90} />
-      </Canvas>
+      </SceneCanvas>
 
       <div className="pointer-events-none absolute left-3 top-3 rounded-panel border border-line bg-void/80 p-3 backdrop-blur">
         <h1 className="font-display text-sm font-bold text-starlight">Solar System</h1>

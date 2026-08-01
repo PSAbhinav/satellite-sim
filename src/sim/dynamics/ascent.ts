@@ -150,7 +150,10 @@ export function computeDerived(s: AscentState, ctx: AscentContext): AscentDerive
   const speed = mag2(s.v);
   const rHat = scale2(s.r, 1 / mag2(s.r));
   const verticalSpeed = s.v.x * rHat.x + s.v.y * rHat.y;
-  const horizSpeed = Math.sqrt(Math.max(0, speed * speed - verticalSpeed * verticalSpeed));
+  // Flight-path angle relative to the AIR (what a pilot/telemetry shows):
+  // straight up at liftoff even though the inertial velocity is mostly the
+  // Earth-rotation speed.
+  const horizAir = Math.sqrt(Math.max(0, airspeed * airspeed - verticalSpeed * verticalSpeed));
   return {
     altitude: alt,
     speed,
@@ -162,6 +165,6 @@ export function computeDerived(s: AscentState, ctx: AscentContext): AscentDerive
     q,
     mach: airspeed / speedOfSound(alt),
     accelG: mag2(feltA) / G0,
-    flightPathAngleDeg: (Math.atan2(verticalSpeed, horizSpeed) * 180) / Math.PI,
+    flightPathAngleDeg: (Math.atan2(verticalSpeed, horizAir) * 180) / Math.PI,
   };
 }

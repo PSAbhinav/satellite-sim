@@ -440,7 +440,9 @@ export class Simulation {
       t: this.t,
       phase: this.phase,
       altitude: der.altitude,
-      speed: der.speed,
+      // Ascent telemetry shows surface-relative speed, like a real webcast —
+      // starting from 0 on the pad instead of the Earth-rotation 400 m/s.
+      speed: der.airspeed,
       verticalSpeed: der.verticalSpeed,
       downrange,
       mass: der.mass,
