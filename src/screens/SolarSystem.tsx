@@ -58,10 +58,10 @@ function Planet({ def, onSelect }: { def: PlanetDef; onSelect: (id: string) => v
 
   return (
     <>
-      {/* Orbit ring — a faint guide, not a highlight */}
+      {/* Orbit ring — a visible guide line, not a highlight */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[r - 0.012, r + 0.012, 128]} />
-        <meshBasicMaterial color="#3a4a6e" transparent opacity={0.18} side={THREE.DoubleSide} />
+        <ringGeometry args={[r - 0.02, r + 0.02, 128]} />
+        <meshBasicMaterial color="#54679c" transparent opacity={0.32} side={THREE.DoubleSide} />
       </mesh>
       <group ref={ref}>
         <mesh
