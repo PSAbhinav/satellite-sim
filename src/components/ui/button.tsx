@@ -8,9 +8,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-ion text-primary-foreground hover:bg-ion/85',
-        go: 'bg-go/90 text-[#04180b] hover:bg-go',
-        destructive: 'bg-crimson text-[#1d0505] hover:bg-crimson/85',
+        default:
+          'bg-gradient-to-b from-ion to-[#5b6ce0] text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_4px_14px_rgba(124,140,248,0.25)] hover:brightness-110',
+        go: 'bg-gradient-to-b from-go to-[#2fae5f] text-[#04180b] shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_4px_14px_rgba(74,222,128,0.25)] hover:brightness-110',
+        destructive:
+          'bg-gradient-to-b from-crimson to-[#d24a4a] text-[#1d0505] shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_14px_rgba(240,106,106,0.25)] hover:brightness-110',
         outline: 'border border-line bg-transparent hover:bg-console-2 hover:text-starlight',
         secondary: 'bg-console-2 text-starlight hover:bg-console-2/70 border border-line',
         ghost: 'hover:bg-console-2 hover:text-starlight',

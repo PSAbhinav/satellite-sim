@@ -58,3 +58,8 @@ class SimController {
 }
 
 export const simController = new SimController();
+
+// Debug/E2E handle.
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).__sim = simController;
+}
