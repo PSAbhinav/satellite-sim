@@ -2,9 +2,27 @@
 // temperatures (blue giants → red dwarfs) and a few soft galaxy-colored washes.
 // Deterministic (seeded) and a few KB of code instead of megabytes of texture.
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { mulberry32 } from '@/sim/math/rng';
+
+const BASE = import.meta.env.BASE_URL;
+
+/** Real Milky Way panorama (Solar System Scope, CC BY 4.0) behind everything. */
+function MilkyWay({ radius }: { radius: number }) {
+  const map = useLoader(THREE.TextureLoader, `${BASE}textures/milkyway.jpg`);
+  useEffect(() => {
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.needsUpdate = true;
+  }, [map]);
+  return (
+    <mesh rotation={[0, 0, 0.4]}>
+      <sphereGeometry args={[radius * 1.15, 48, 48]} />
+      <meshBasicMaterial map={map} side={THREE.BackSide} depthWrite={false} />
+    </mesh>
+  );
+}
 
 const STAR_COLORS = [
   [0.62, 0.72, 1.0], // O/B blue
@@ -50,6 +68,7 @@ export function Starfield({ count = 3500, radius = 400 }: { count?: number; radi
 
   return (
     <group>
+      <MilkyWay radius={radius} />
       <points geometry={geometry}>
         <pointsMaterial vertexColors size={1.6} sizeAttenuation={false} depthWrite={false} />
       </points>
