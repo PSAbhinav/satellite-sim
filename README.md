@@ -53,9 +53,11 @@ uPlot, Radix, Tailwind v4.
 Planet textures by Solar System Scope (solarsystemscope.com/textures), CC BY 4.0.
 
 ## Asset & license audit
-- Planet, Sun, Milky Way, 8K Earth day/night maps: Solar System Scope
+- Planet, Sun, 8K Earth day/night maps: Solar System Scope
   (solarsystemscope.com/textures) - CC BY 4.0, attribution above. These are
   themselves derived from NASA imagery (public domain).
+- Milky Way skybox: "The Milky Way panorama" - ESO/S. Brunier
+  (eso.org/public/images/eso0932a) - CC BY 4.0.
 - Earth cloud layer: NASA Blue Marble derivative (public domain source imagery).
 - Fonts: Chakra Petch, Inter, JetBrains Mono via Fontsource - SIL Open Font License.
 - Libraries: React, three.js, @react-three/fiber & drei, zustand, uPlot, KaTeX,

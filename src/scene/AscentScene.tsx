@@ -15,6 +15,10 @@ import { ProceduralRocket3D } from './ProceduralRocket3D';
 import { Starfield } from './Starfield';
 import { Earth } from './Earth';
 
+// Direction TO this scene's sun (the glare sprite at [210,260,90] and the
+// directional light both sit along it) — shared with the Earth terminator.
+const ASCENT_SUN_DIR = new THREE.Vector3(210, 260, 90).normalize();
+
 function softDiscTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
@@ -312,7 +316,8 @@ function SceneContent({ design, cinematic }: { design: RocketDesign; cinematic?:
       </group>
 
       <group ref={earthRef} visible={false}>
-        <Earth radius={EARTH_R} />
+        {/* Terminator matches this scene's own sun (the glare sprite / light). */}
+        <Earth radius={EARTH_R} sunDirection={ASCENT_SUN_DIR} />
       </group>
 
       {/* maxPolarAngle keeps the camera above the horizon — no under-ground views. */}

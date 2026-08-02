@@ -19,6 +19,53 @@ import { Starfield } from './Starfield';
 const SCALE = 1 / R_EARTH;
 const TRAIL_LEN = 240;
 
+// ONE sun for the whole scene: the visible disc, the directional light, and
+// the Earth shader's terminator all derive from this direction — so day/night
+// on the globe always points at the sun you can actually see.
+const SUN_DIR = new THREE.Vector3(1, 0.22, 0.38).normalize();
+const SUN_DIST = 330;
+
+/** The Sun, visible from orbit: a hot disc + layered additive glow. Bloom
+    picks up the >1 emissive color and gives it the webcam-flare look. */
+function Sun() {
+  const glowTex = useMemo(() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0, 'rgba(255,244,214,1)');
+    grad.addColorStop(0.25, 'rgba(255,214,140,0.55)');
+    grad.addColorStop(0.6, 'rgba(255,180,90,0.16)');
+    grad.addColorStop(1, 'rgba(255,160,70,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(c);
+  }, []);
+  const pos = useMemo(() => SUN_DIR.clone().multiplyScalar(SUN_DIST), []);
+  const coreMat = useMemo(() => {
+    const m = new THREE.MeshBasicMaterial();
+    m.color.setRGB(4, 3.6, 3); // >1 so Bloom flares it
+    return m;
+  }, []);
+  return (
+    <group position={pos}>
+      <mesh material={coreMat}>
+        {/* Real angular size would be ~1.5 units at this distance; drawn a
+            touch larger for presence. */}
+        <sphereGeometry args={[2.6, 24, 24]} />
+      </mesh>
+      <sprite scale={[46, 46, 1]}>
+        <spriteMaterial
+          map={glowTex}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </sprite>
+    </group>
+  );
+}
+
 /** Sim frame (orbital plane = xy) → render frame (y-up): (x, y, z) → (x, z, y). */
 const toScene = (p: { x: number; y: number; z: number }): [number, number, number] => [
   p.x * SCALE,
@@ -107,10 +154,15 @@ export function OrbitScene() {
   return (
     <SceneCanvas camera={{ position: [0, 1.8, 3.6], fov: 45 }}>
       <color attach="background" args={['#05070f']} />
-      <ambientLight intensity={0.25} />
-      <directionalLight position={[50, 0, 20]} intensity={2} />
+      <ambientLight intensity={0.2} />
+      <directionalLight
+        position={[SUN_DIR.x * 50, SUN_DIR.y * 50, SUN_DIR.z * 50]}
+        intensity={2.2}
+        color="#fff4dc"
+      />
       <Starfield />
-      <Earth />
+      <Sun />
+      <Earth sunDirection={SUN_DIR} />
       <Satellite />
       <OrbitPath />
       <OrbitControls enablePan minDistance={1.4} maxDistance={20} />

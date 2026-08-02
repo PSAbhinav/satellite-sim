@@ -34,7 +34,9 @@ interface PlanetDef {
 const PLANETS: PlanetDef[] = [
   { id: 'planet-mercury', name: 'Mercury', color: '#9c9188', tex: PTEX('2k_mercury.jpg'), size: 0.38, au: 0.39, periodY: 0.24 },
   { id: 'planet-venus', name: 'Venus', color: '#e8c07a', tex: PTEX('2k_venus_atmosphere.jpg'), size: 0.95, au: 0.72, periodY: 0.62 },
-  { id: 'planet-earth', name: 'Earth', color: '#4f7be8', tex: `${BASE}textures/earth_day.jpg`, size: 1.0, au: 1.0, periodY: 1.0 },
+  // 2K copy of the day map — the 8K original is for the orbit view; at planet
+  // scale it would cost ~130 MB of GPU memory for nothing.
+  { id: 'planet-earth', name: 'Earth', color: '#4f7be8', tex: PTEX('2k_earth.jpg'), size: 1.0, au: 1.0, periodY: 1.0 },
   { id: 'planet-mars', name: 'Mars', color: '#d1603d', tex: PTEX('2k_mars.jpg'), size: 0.53, au: 1.52, periodY: 1.88 },
   { id: 'planet-jupiter', name: 'Jupiter', color: '#d8a26a', tex: PTEX('2k_jupiter.jpg'), size: 3.6, au: 5.2, periodY: 11.9 },
   { id: 'planet-saturn', name: 'Saturn', color: '#e5cf9a', tex: PTEX('2k_saturn.jpg'), size: 3.1, au: 9.5, periodY: 29.5, ring: true },
@@ -45,6 +47,44 @@ const PLANETS: PlanetDef[] = [
 // Log-compress distances so Neptune fits on screen while order is preserved.
 const orbitRadius = (au: number) => 4 + Math.log2(1 + au) * 5.2;
 const planetSize = (s: number) => 0.28 + Math.sqrt(s) * 0.32;
+
+/**
+ * Saturn's rings from the real CC-BY texture (2048×125 radial strip: the long
+ * axis runs inner→outer radius). RingGeometry's default UVs are planar, so
+ * every vertex is remapped to u = normalized radius — that's what turns the
+ * strip into the banded A/B/C rings with the Cassini division.
+ */
+function SaturnRings({ planetR }: { planetR: number }) {
+  const tex = useLoader(THREE.TextureLoader, PTEX('2k_saturn_ring_alpha.png'));
+  useEffect(() => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    tex.needsUpdate = true;
+  }, [tex]);
+  // Real proportions: C-ring inner ≈ 1.24 R♄, A-ring outer ≈ 2.27 R♄.
+  const inner = planetR * 1.24;
+  const outer = planetR * 2.27;
+  const geo = useMemo(() => {
+    const g = new THREE.RingGeometry(inner, outer, 96, 1);
+    const pos = g.attributes.position;
+    const uv = g.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+      const r = Math.hypot(pos.getX(i), pos.getY(i));
+      uv.setXY(i, (r - inner) / (outer - inner), 0.5);
+    }
+    return g;
+  }, [inner, outer]);
+  return (
+    <mesh geometry={geo} rotation={[-Math.PI / 2.6, 0, 0]}>
+      <meshBasicMaterial
+        map={tex}
+        transparent
+        side={THREE.DoubleSide}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
 
 function Planet({ def, onSelect }: { def: PlanetDef; onSelect: (id: string) => void }) {
   const ref = useRef<THREE.Group>(null);
@@ -91,12 +131,7 @@ function Planet({ def, onSelect }: { def: PlanetDef; onSelect: (id: string) => v
             roughness={0.85}
           />
         </mesh>
-        {def.ring && (
-          <mesh rotation={[-Math.PI / 2.6, 0, 0]}>
-            <ringGeometry args={[size * 1.4, size * 2.1, 48]} />
-            <meshBasicMaterial color="#cbb98a" transparent opacity={0.5} side={THREE.DoubleSide} />
-          </mesh>
-        )}
+        {def.ring && <SaturnRings planetR={size} />}
         {/* zIndexRange keeps labels UNDER the dialog overlay (drei's default is ~16M). */}
         <Html center distanceFactor={26} zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
           <div

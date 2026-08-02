@@ -1,6 +1,7 @@
-// Procedural starfield + nebula glow. Thousands of stars with real-ish color
-// temperatures (blue giants → red dwarfs) and a few soft galaxy-colored washes.
-// Deterministic (seeded) and a few KB of code instead of megabytes of texture.
+// Real night sky: the ESO/S. Brunier all-sky Milky Way panorama (CC BY 4.0)
+// as the skybox — an actual photograph of the galaxy, gold core, dust lanes,
+// Magellanic Clouds — plus procedural stars with real color temperatures
+// (blue giants → red dwarfs) floating in front for parallax depth.
 
 import { useEffect, useMemo } from 'react';
 import { useLoader } from '@react-three/fiber';
@@ -9,17 +10,24 @@ import { mulberry32 } from '@/sim/math/rng';
 
 const BASE = import.meta.env.BASE_URL;
 
-/** Real Milky Way panorama (Solar System Scope, CC BY 4.0) behind everything. */
+/** The galaxy itself — ESO/S. Brunier 360° panorama, CC BY 4.0. */
 function MilkyWay({ radius }: { radius: number }) {
-  const map = useLoader(THREE.TextureLoader, `${BASE}textures/milkyway.jpg`);
+  const map = useLoader(THREE.TextureLoader, `${BASE}textures/milkyway_eso.jpg`);
+  const material = useMemo(() => {
+    const m = new THREE.MeshBasicMaterial({ map, side: THREE.BackSide, depthWrite: false });
+    // The pano is a true astronomical exposure — dark by design. Lift it so
+    // the band and its colors read on a consumer screen.
+    m.color.setRGB(1.65, 1.65, 1.65);
+    return m;
+  }, [map]);
   useEffect(() => {
     map.colorSpace = THREE.SRGBColorSpace;
+    map.anisotropy = 4;
     map.needsUpdate = true;
   }, [map]);
   return (
-    <mesh rotation={[0, 0, 0.4]}>
+    <mesh rotation={[0.35, 0, 0.4]} material={material}>
       <sphereGeometry args={[radius * 1.15, 48, 48]} />
-      <meshBasicMaterial map={map} side={THREE.BackSide} depthWrite={false} />
     </mesh>
   );
 }
@@ -72,48 +80,6 @@ export function Starfield({ count = 3500, radius = 400 }: { count?: number; radi
       <points geometry={geometry}>
         <pointsMaterial vertexColors size={1.6} sizeAttenuation={false} depthWrite={false} />
       </points>
-      <NebulaWash />
     </group>
-  );
-}
-
-/** Soft radial-gradient sprites in galaxy colors — teal, violet, magenta. */
-function NebulaWash() {
-  const texture = useMemo(() => {
-    const c = document.createElement('canvas');
-    c.width = c.height = 256;
-    const g = c.getContext('2d')!;
-    const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
-    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
-    grad.addColorStop(0.4, 'rgba(255,255,255,0.25)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 256, 256);
-    const t = new THREE.CanvasTexture(c);
-    return t;
-  }, []);
-
-  const clouds: { pos: [number, number, number]; color: string; scale: number; opacity: number }[] = [
-    { pos: [-260, 90, -240], color: '#7c8cf8', scale: 320, opacity: 0.10 },
-    { pos: [280, -60, -200], color: '#5ee6c8', scale: 260, opacity: 0.07 },
-    { pos: [60, 200, -300], color: '#c471ed', scale: 300, opacity: 0.08 },
-    { pos: [-120, -220, -180], color: '#3b5bd9', scale: 240, opacity: 0.09 },
-  ];
-
-  return (
-    <>
-      {clouds.map((n, i) => (
-        <sprite key={i} position={n.pos} scale={[n.scale, n.scale, 1]}>
-          <spriteMaterial
-            map={texture}
-            color={n.color}
-            transparent
-            opacity={n.opacity}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </sprite>
-      ))}
-    </>
   );
 }

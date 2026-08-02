@@ -10,7 +10,15 @@ import { OMEGA_EARTH } from '@/sim/constants';
 
 const BASE = import.meta.env.BASE_URL;
 
-export function Earth({ radius = 1 }: { radius?: number }) {
+export function Earth({
+  radius = 1,
+  sunDirection,
+}: {
+  radius?: number;
+  /** World-space direction TO the sun; drives the day/night terminator so it
+      always agrees with wherever the scene draws its sun. */
+  sunDirection?: THREE.Vector3;
+}) {
   const [dayMap, nightMap, cloudMap] = useLoader(THREE.TextureLoader, [
     `${BASE}textures/earth_day.jpg`,
     `${BASE}textures/earth_night.jpg`,
@@ -66,11 +74,22 @@ export function Earth({ radius = 1 }: { radius?: number }) {
     [dayMap, nightMap],
   );
 
-  useFrame(() => {
+  // Keep the terminator glued to the scene's sun.
+  useEffect(() => {
+    if (sunDirection) {
+      (shaderMaterial.uniforms.lightDirection.value as THREE.Vector3).copy(sunDirection);
+    }
+  }, [shaderMaterial, sunDirection]);
+
+  useFrame(({ clock }) => {
     const t = telemetryBus.get()?.t ?? 0;
     // Earth rotates with mission time; the sun stays fixed in inertial space.
     if (earthRef.current) earthRef.current.rotation.y = OMEGA_EARTH * t;
-    if (cloudsRef.current) cloudsRef.current.rotation.y = OMEGA_EARTH * t * 1.35;
+    // Clouds ride with the planet plus a gentle drift of their own — the
+    // living-planet touch from the Phase-3 original (real cloud motion would
+    // be imperceptible at 1×).
+    if (cloudsRef.current)
+      cloudsRef.current.rotation.y = OMEGA_EARTH * t * 1.35 + clock.elapsedTime * 0.008;
   });
 
   return (
@@ -81,7 +100,7 @@ export function Earth({ radius = 1 }: { radius?: number }) {
       </mesh>
       <mesh ref={cloudsRef}>
         <sphereGeometry args={[radius * 1.008, 48, 48]} />
-        <meshPhongMaterial map={cloudMap} transparent opacity={0.28} depthWrite={false} />
+        <meshPhongMaterial map={cloudMap} transparent opacity={0.34} depthWrite={false} />
       </mesh>
       {/* Atmosphere: fresnel rim glow — brightest at the limb, like the real
           scattering halo in orbital photography. */}
