@@ -149,7 +149,7 @@ export default function OrbitOps() {
                   <>
                     <div className="py-1 text-center">
                       <div className="telemetry text-2xl font-bold text-flame">
-                        T−{sToMinSec(Math.max(0, burn.tToIgnitionS))}
+                        {sToMinSec(-Math.max(0, burn.tToIgnitionS))}
                       </div>
                       <div className="mt-0.5 font-display text-[9px] uppercase tracking-[0.25em] text-muted-star">
                         to second engine start
